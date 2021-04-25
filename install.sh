@@ -2,30 +2,30 @@
 
 # Write variable to variables file
 export_variable() {
-    VAR_NAME=$1
-    shift;
-    VAR=$*
+	VAR_NAME=$1
+	shift;
+	VAR=$*
 
-    echo "$VAR_NAME=$VAR" >> ./variables
-    source ./variables
+	echo "$VAR_NAME=$VAR" >> ./variables
+	source ./variables
 }
 
 # Prompt the user for a variable and write it to the variables file
 get_variable() {
-    VAR_NAME=$1
-    shift;
-    MESSAGE=$*
-    clear
+	VAR_NAME=$1
+	shift;
+	MESSAGE=$*
+	clear
 
 	# Prompt the user for the variable
-    echo "$MESSAGE"
-    read -r VAR
+	echo "$MESSAGE"
+	read -r VAR
 
 	# Export the variable
-    export_variable "$VAR_NAME" "$VAR"
+	export_variable "$VAR_NAME" "$VAR"
 
 	# Re-clear the screen
-    clear
+	clear
 }
 
 
@@ -58,17 +58,17 @@ partition_legacy() {
 	SIZE_1=$((1 + BOOT_SIZE))
 	SIZE_2=$((SIZE_1 + SWAP_SIZE))
 
-    parted --script -a optimal "$DISK" \
-        mklabel msdos \
-        unit mib \
-        mkpart primary 1 "$SIZE_1" \
-        mkpart primary "$SIZE_1" "$SIZE_2" \
-        -- mkpart primary "$SIZE_2" -1 \
+	parted --script -a optimal "$DISK" \
+		mklabel msdos \
+		unit mib \
+		mkpart primary 1 "$SIZE_1" \
+		mkpart primary "$SIZE_1" "$SIZE_2" \
+		-- mkpart primary "$SIZE_2" -1 \
 
-    # Export disk variables
-    export_variable BOOT_PART "$DISK""1"
-    export_variable SWAP_PART "$DISK""2"
-    export_variable ROOT_PART "$DISK""3"
+	# Export disk variables
+	export_variable BOOT_PART "$DISK""1"
+	export_variable SWAP_PART "$DISK""2"
+	export_variable ROOT_PART "$DISK""3"
 }
 
 # Disk partitioning with GPT for UEFI
@@ -77,32 +77,32 @@ partition_uefi() {
 	SIZE_1=$((1 + BOOT_SIZE))
 	SIZE_2=$((SIZE_1 + SWAP_SIZE))
 
-    # Creating the boot, swap and root partition
-    parted --script -a optimal "$DISK" \
-        mklabel gpt \
-        unit mib \
-        mkpart primary 1 "$SIZE_1" \
-        name 1 boot \
-        set 1 boot on \
-        mkpart primary "$SIZE_1" "$SIZE_2" \
-        name 2 swap \
-        -- mkpart primary "$SIZE_2" -1 \
-        name 3 rootfs
+	# Creating the boot, swap and root partition
+	parted --script -a optimal "$DISK" \
+		mklabel gpt \
+		unit mib \
+		mkpart primary 1 "$SIZE_1" \
+		name 1 boot \
+		set 1 boot on \
+		mkpart primary "$SIZE_1" "$SIZE_2" \
+		name 2 swap \
+		-- mkpart primary "$SIZE_2" -1 \
+		name 3 rootfs
 
-    # Export disk variables
-    export_variable BOOT_PART "$DISK""1"
-    export_variable SWAP_PART "$DISK""2"
-    export_variable ROOT_PART "$DISK""3"
+	# Export disk variables
+	export_variable BOOT_PART "$DISK""1"
+	export_variable SWAP_PART "$DISK""2"
+	export_variable ROOT_PART "$DISK""3"
 }
 
 
 # Format the partition for UEFI 
 # with the BTRFS filesystem
 format_uefi() {
-    yes | mkfs.vfat -F 32 "$BOOT_PART"
-    yes | mkfs.ext4 "$ROOT_PART"
-    mkswap "$SWAP_PART"
-    swapon "$SWAP_PART"
+	yes | mkfs.vfat -F 32 "$BOOT_PART"
+	yes | mkfs.ext4 "$ROOT_PART"
+	mkswap "$SWAP_PART"
+	swapon "$SWAP_PART"
 }
 
 

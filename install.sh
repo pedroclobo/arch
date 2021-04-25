@@ -31,7 +31,7 @@ get_variable() {
 
 # Check if the boot mode is uefi and write corresponding variable
 get_uefi_system_variable() {
-	if [ -d "/sys/firmware/efi/efivars" ]
+	if [ -d "/sys/firmware/efi/efivars" ];
 	then
 		export_variable "UEFI" 1
 	else
@@ -44,7 +44,7 @@ fi
 
 # Returns true if the boot mode if UEFI
 is_uefi_system() {
-	if [[ $UEFI = 1 ]]
+	if [ "$UEFI" == 1 ];
 	then
 		return 1
 	else
@@ -144,7 +144,7 @@ get_uefi_system_variable
 timedatectl set-ntp true
 
 # Partition the disks
-if [ "$is_uefi_system" ]
+if [ "$is_uefi_system" ];
 then
 	partition_uefi
 else
@@ -152,7 +152,7 @@ else
 fi
 
 # Format the partitions
-if [ "$is_uefi_system" ]
+if [ "$is_uefi_system" ];
 then
 	format_uefi
 else

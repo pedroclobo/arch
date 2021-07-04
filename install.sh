@@ -1,79 +1,103 @@
 #!/bin/bash
 
-# Write variable to variables file
-export_variable() {
-	VAR_NAME=$1
-	shift;
-	VAR=$*
-
-	echo "$VAR_NAME=$VAR" >> ./variables
-	source ./variables
-}
-
-# Prompt the user for a variable and write it to the variables file
-get_variable() {
-	VAR_NAME=$1
-	shift;
-	MESSAGE=$*
-	clear
-
-	# Prompt the user for the variable
-	echo "$MESSAGE"
-	read -r VAR
-
-	# Export the variable
-	export_variable "$VAR_NAME" "$VAR"
-
-	# Re-clear the screen
-	clear
-}
+BOOT_SIZE="260"
+REPO_ZIP="https://github.com/pedroclobo/arch/archive/refs/heads/main.zip"
 
 
-# Check if the boot mode is uefi and write corresponding variable
-get_uefi_system_variable() {
-	if [ -d "/sys/firmware/efi/efivars" ];
-	then
-		export_variable "UEFI" 1
-	else
-		export_variable "UEFI" 0
-fi
-
-	# Source variables file at the end
-	source ./variables
-}
-
-# Returns true if the boot mode if UEFI
+# Check if the boot mode if UEFI
 is_uefi_system() {
-	if [ "$UEFI" == 1 ];
-	then
-		return 1
-	else
-		return 0
-	fi
+	[ -d "/sys/firmware/efi/efivars" ]
 }
 
-# Disk partitioning with MBR for BIOS / Legacy boot
-partition_legacy() {
+# Install a package through pacman
+install() {
+	pacman -S $@ --noconfirm
+}
 
+# Sincronize mirrors
+refresh_mirrors() {
+	pacman -Syy
+}
+
+# Check if a package is installed
+is_installed() {
+	pacman -Qnq | grep -q -wx $1
+}
+
+# Sort pacman mirrors based on speed and location
+# and refresh them
+update_mirrors() {
+	reflector -c "$1" -a 6 --sort rate --save /etc/pacman.d/mirrorlist
+	refresh_mirrors
+}
+
+# List all available keyboard layouts
+list_keyboard_layouts() {
+	localectl list-keymaps
+}
+
+# Set keyboard layout
+set_keyboard_layout() {
+	loadkeys $1
+}
+
+# Recognizes a keyboard layout
+is_keyboard_layout() {
+	localectl list-keymaps | grep -q -wx "$1"
+}
+
+# List all disks available and their sizes
+list_disks() {
+	lsblk -l | grep disk | awk '{print "/dev/"$1, "(" $4 ")"}'
+}
+
+# Check for a valid disk
+is_disk() {
+	lsblk -l | grep disk | awk '{print "/dev/"$1}' | grep -q -wx "$1"
+}
+
+
+list_filesystems() {
+	echo "ext4"
+}
+
+is_filesystem() {
+	list_filesystems | grep -q -wx "$1"
+}
+
+list_timezones() {
+	timedatectl list-timezones
+}
+
+is_timezone() {
+	list_timezones | grep -q -wx "$1"
+}
+
+# Update the system clock
+update_clock() {
+	timedatectl set-ntp true
+}
+
+# Partition the disk with MBR for BIOS / Legacy boot
+partition_mbr() {
 	SIZE_1=$((1 + BOOT_SIZE))
 	SIZE_2=$((SIZE_1 + SWAP_SIZE))
-
+	
 	parted --script -a optimal "$DISK" \
 		mklabel msdos \
 		unit mib \
 		mkpart primary 1 "$SIZE_1" \
 		mkpart primary "$SIZE_1" "$SIZE_2" \
 		-- mkpart primary "$SIZE_2" -1 \
-
+	
 	# Export disk variables
 	export_variable BOOT_PART "$DISK""1"
 	export_variable SWAP_PART "$DISK""2"
 	export_variable ROOT_PART "$DISK""3"
 }
 
-# Disk partitioning with GPT for UEFI
-partition_uefi() {
-
+# Partition the disk with GPT for UEFI
+partition_gpt() {
 	SIZE_1=$((1 + BOOT_SIZE))
 	SIZE_2=$((SIZE_1 + SWAP_SIZE))
 
@@ -95,9 +119,7 @@ partition_uefi() {
 	export_variable ROOT_PART "$DISK""3"
 }
 
-
-# Format the partition for UEFI 
-# with the BTRFS filesystem
+# Format the partition for UEFI with the ext4 filesystem
 format_uefi() {
 	yes | mkfs.vfat -F 32 "$BOOT_PART"
 	yes | mkfs.ext4 "$ROOT_PART"
@@ -105,64 +127,43 @@ format_uefi() {
 	swapon "$SWAP_PART"
 }
 
-
-# Sorts the mirrors by speed and writes the output to the mirrorlist file
-sort_mirrors() {
-	reflector -c "$1" -a 6 --sort rate --save /etc/pacman.d/mirrorlist
+# Check if the system supports UEFI
+export_uefi_variable() {
+is_uefi_system && 
+	export_variable "UEFI" 1 ||
+	export_variable "UEFI" 0
 }
 
+# Initilize the installer
+initialize_installer() {
 
-##################
-### User Input ###
-##################
+	# Download necessary files and source them
+	refresh_mirrors && install "wget" "unzip"
+	wget "$REPO_ZIP"
+	unzip *.zip && mv ./arch-main/*.sh . && \
+		rm -f *.zip && rm -rf ./arch-main && \
+		chmod +x *.sh
+	source *.sh
 
-# Prompt for the disk device to install the OS to
-DISKS=$(lsblk -l | grep disk | awk '{print "\t/dev/"$1, "\t" $4}')
-get_variable DISK "What disk do you want to install the OS to?\n$DISKS\n--> "
+	# Check for UEFI support
+	export_uefi_variable
+}
 
-# Prompt for the boot partition size
-get_variable BOOT_SIZE "Enter boot partition size (in MB)\n--> "
+###################
+### Instalation ###
+###################
 
-# Prompt for the swap partition size
-get_variable SWAP_SIZE "Enter swap size? (in MB)\n--> "
+# Prepare the installer
+initialize_installer
 
-# Prompt for the hostname
-get_variable HOSTNAME "What hostname?\n--> "
+# Get user input
+get_keyboard_layout
+get_country
+get_disks
+get_filesystem
+get_crypt_passwd
+get_hostname
+get_passwd
+get_timezone
+get_confirmation
 
-# Prompt for the root password
-get_variable PASSWORD "Enter root password\n--> "
-
-
-########################
-### Pre-Installation ###
-########################
-
-# Verify the boot mode
-get_uefi_system_variable
-
-# Update the system clock
-timedatectl set-ntp true
-
-# Partition the disks
-if [ "$is_uefi_system" ];
-then
-	partition_uefi
-else
-	partition_legacy
-fi
-
-# Format the partitions
-if [ "$is_uefi_system" ];
-then
-	format_uefi
-else
-	format_legacy
-fi
-
-
-####################
-### Installation ###
-####################
-
-# Select the mirrors
-sort_mirrors "Portugal"

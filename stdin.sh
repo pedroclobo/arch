@@ -2,7 +2,7 @@
 # User input related functions
 
 # Source functions
-source ./common.sh
+source ./install.sh
 
 # File to store the variables in
 VAR_FILE="./variables.txt"

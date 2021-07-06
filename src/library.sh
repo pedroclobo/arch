@@ -95,7 +95,6 @@ partition_mbr() {
 # Partition the disk with GPT for UEFI
 partition_gpt() {
 	SIZE_1=$((1 + BOOT_SIZE))
-	SIZE_2=$((SIZE_1 + SWAP_SIZE))
 
 	# Creating the boot, swap and root partition
 	parted --script -a optimal "$DISK" \
@@ -104,28 +103,22 @@ partition_gpt() {
 		mkpart primary 1 "$SIZE_1" \
 		name 1 boot \
 		set 1 boot on \
-		mkpart primary "$SIZE_1" "$SIZE_2" \
-		name 2 swap \
-		-- mkpart primary "$SIZE_2" -1 \
-		name 3 rootfs
+		-- mkpart primary "$SIZE_1" -1 \
+		name 2 rootfs
 
 	# Export disk variables
 	export_variable "BOOT_PART" "$DISK""1"
-	export_variable "SWAP_PART" "$DISK""2"
-	export_variable "ROOT_PART" "$DISK""3"
+	export_variable "ROOT_PART" "$DISK""2"
 }
 
 # Format the partition for UEFI with the ext4 filesystem
 format_uefi() {
 	yes | mkfs.vfat -F 32 "$BOOT_PART"
 	yes | mkfs.ext4 "$ROOT_PART"
-	mkswap "$SWAP_PART"
-	swapon "$SWAP_PART"
 }
 
 # Mount the partitions
 mount_gpt() {
 	mount "$ROOT_PART" /mnt
 	mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
-	swapon "$SWAP_PART"
 }

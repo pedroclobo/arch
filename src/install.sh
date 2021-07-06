@@ -39,7 +39,7 @@ initialize_installer() {
 ###################
 
 # Prepare the installer
-initialize_script
+initialize_script && clear
 
 # Get user input
 get_keyboard_layout

@@ -112,7 +112,7 @@ partition_gpt() {
 }
 
 # Format the partition for UEFI with the ext4 filesystem
-format_uefi() {
+format_gpt() {
 	yes | mkfs.vfat -F 32 "$BOOT_PART"
 	yes | mkfs.ext4 "$ROOT_PART"
 }
@@ -121,4 +121,79 @@ format_uefi() {
 mount_gpt() {
 	mount "$ROOT_PART" /mnt
 	mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
+}
+
+# Install essencial packages
+install_essential() {
+	pacstrap /mnt base linux linux-firmware
+}
+
+generate_fstab() {
+	genfstab -U /mnt >> /mnt/etc/fstab
+}
+
+change_root() {
+	curl $CHROOT > /mnt/chroot.sh && 
+		mv ./*.sh /mnt &&
+		arch-chroot /mnt bash chroot.sh && 
+		rm /mnt/chroot.sh
+}
+
+set_time_zone() {
+	ln -sf /usr/share/zoneinfo/"$1" /etc/localtime
+	hwclock --systohc
+}
+
+uncomment_locale() {
+	sed -i "s/#"$1"/"$1"/g" /etc/locale.gen
+}
+
+set_lang_var() {
+	echo "LANG=${1}" > /etc/locale.conf
+	
+}
+
+set_keyboard_var() {
+	echo "KEYMAP=${KEY_LAYOUT}" >> /etc/vconsole.conf
+}
+
+generate_locales() {
+	[ "$COUNTRY" = "Portugal" ] && 
+		uncomment_locale "en_US.UTF-8" &&
+		uncomment_locale "pt_PT.UTF-8" &&
+		locale-gen && set_lang_var "en_US.UTF-8" && set_keyboard_var "$KEY_LAYOUT"
+}
+
+set_hostname() {
+	echo "$HOSTNAME" > /etc/hostname
+}
+
+set_hosts() {
+	printf "127.0.0.1	localhost\n::1		localhost\n127.0.1.1	${HOSTNAME}.localdomain	${HOSTNAME}" >> /etc/hosts
+}
+
+create_initramfs() {
+	mkinitcpio -P
+}
+
+set_password() {
+	echo "${1}:${2}" | chpasswd
+}
+
+install_systemd_boot() {
+	
+	# Install the bootloader
+	bootctl --path=/boot install
+
+	create_loader_entry
+	change_default_entry "arch"
+}
+
+change_default_entry() {
+	
+	sed -i "s/default.*/default\t${1}.conf/g" /boot/loader/loader.conf
+}
+
+create_loader_entry() {
+	print "title\tArch\nlinux\t/vmlinuz-linux\ninitrd\t/intel-ucode.img\ninitrd\t/initramfs-linux-fallback.img\toptions root=${ROOT_PART} rw" > /boot/loader/entries/arch.conf
 }

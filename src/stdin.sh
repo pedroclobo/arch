@@ -36,6 +36,7 @@ MSG_START_INSTALL="${RED}There is no going back!\n${NC}Starting installation in"
 # Write the variable to the variables file
 export_variable() {
 	echo "$1=\"$2\"" >> variables.txt
+	source "$VAR_FILE"
 }
 
 # Check if username is valid

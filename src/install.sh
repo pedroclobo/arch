@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Installation files
-UEFI_EXT4_CRYPT="https://raw.githubusercontent.com/pedroclobo/arch/main/src/installations/uefi_ext4_crypt.sh"
+UEFI_EXT4_CRYPT="https://raw.githubusercontent.com/pedroclobo/arch/main/src/installations/uefi_ext4_crypt/install.sh"
 
 # Source functions
 source ./library.sh

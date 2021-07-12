@@ -195,5 +195,5 @@ change_default_entry() {
 }
 
 create_loader_entry() {
-	print "title\tArch\nlinux\t/vmlinuz-linux\ninitrd\t/intel-ucode.img\ninitrd\t/initramfs-linux-fallback.img\toptions root=${ROOT_PART} rw" > /boot/loader/entries/arch.conf
+	printf "title\tArch\nlinux\t/vmlinuz-linux\ninitrd\t/intel-ucode.img\ninitrd\t/initramfs-linux-fallback.img\toptions root=${ROOT_PART} rw" > /boot/loader/entries/arch.conf
 }

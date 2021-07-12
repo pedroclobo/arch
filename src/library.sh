@@ -134,7 +134,7 @@ generate_fstab() {
 
 change_root() {
 	curl $CHROOT > /mnt/chroot.sh && 
-		mv ./*.sh /mnt &&
+		mv ./* /mnt &&
 		arch-chroot /mnt bash chroot.sh && 
 		rm /mnt/chroot.sh
 }

@@ -31,7 +31,7 @@ initialize_script() {
 
 # Initilize the installer based on the choosen filesystem
 initialize_installer() {
-	[ "$UEFI" = "1" ] && [ "$FILESYSTEM" = "ext4" ] && ! [ "$CRYPT_PASSWD" = "" ] && download_installer "$UEFI_EXT4_CRYPT" && chmod +x ./installer.sh && bash installer.sh
+	[ "$UEFI" = "1" ] && [ "$FILESYSTEM" = "ext4" ] && ! [ "$CRYPT_PASSWD" = "" ] && download_installer "$UEFI_EXT4_CRYPT" && chmod +x ./installer.sh && clear && bash installer.sh
 }
 
 ###################

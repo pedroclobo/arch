@@ -202,4 +202,5 @@ get_confirmation() {
 			printf " $i"
 			sleep 1
 		done
+	clear
 }

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Installation files
+UEFI_EXT4="https://raw.githubusercontent.com/pedroclobo/arch/main/src/installations/uefi_ext4/install.sh"
 UEFI_EXT4_CRYPT="https://raw.githubusercontent.com/pedroclobo/arch/main/src/installations/uefi_ext4_crypt/install.sh"
 
 # Source functions
@@ -9,7 +10,7 @@ source ./stdin.sh
 
 # Check if the system supports UEFI
 export_uefi_variable() {
-is_uefi_system && 
+is_uefi_system &&
 	export_variable "UEFI" 1 ||
 	export_variable "UEFI" 0
 }
@@ -31,7 +32,15 @@ initialize_script() {
 
 # Initilize the installer based on the choosen filesystem
 initialize_installer() {
-	[ "$UEFI" = "1" ] && [ "$FILESYSTEM" = "ext4" ] && ! [ "$CRYPT_PASSWD" = "" ] && download_installer "$UEFI_EXT4_CRYPT" && chmod +x ./installer.sh && clear && bash installer.sh
+
+	# UEFI install with ext4 filesystem
+	[ "$UEFI" = "1" ] && [ "$FILESYSTEM" = "ext4" ] && [ "$CRYPT_PASSWD" = "" ] &&
+		download_installer "$UEFI_EXT4" && chmod +x ./installer.sh && clear && bash installer.sh
+
+	# Encrypted UEFI install with ext4 filesystem
+	[ "$UEFI" = "1" ] && [ "$FILESYSTEM" = "ext4" ] && ! [ "$CRYPT_PASSWD" = "" ] &&
+		download_installer "$UEFI_EXT4_CRYPT" && chmod +x ./installer.sh && clear && bash installer.sh
+
 }
 
 ###################

@@ -35,13 +35,19 @@ MSG_START_INSTALL="${RED}There is no going back!\n${NC}Starting installation in"
 
 # Write the variable to the variables file
 export_variable() {
-	echo "$1=\"$2\"" >> variables.txt
+	echo "$1=\"$2\"" >> "$VAR_FILE"
 	source "$VAR_FILE"
+}
+
+# Alter the value of the given variable
+change_variable() {
+	sed -i "s/${1}.*//g" "$VAR_FILE"
+	export_variable "$1" "$2"
 }
 
 # Check if username is valid
 is_valid_user() {
-	printf "$1" | grep -q "^[a-z_][a-z0-9_-]*$"
+	echo "$1" | grep -q "^[a-z_][a-z0-9_-]*$"
 }
 
 # Prompt for keyboard layout

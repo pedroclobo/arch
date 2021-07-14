@@ -1,4 +1,5 @@
 #!/bin/bash
+# File with all install related functions
 
 # Check if the boot mode if UEFI
 is_uefi_system() {
@@ -113,14 +114,31 @@ partition_gpt() {
 
 # Format the partition for UEFI with the ext4 filesystem
 format_gpt() {
-	yes | mkfs.vfat -F 32 "$BOOT_PART"
-	yes | mkfs.ext4 "$ROOT_PART"
+
+	# Non-encrypted
+	[ "$CRYPT_PASSWD" = "" ] &&
+		yes | mkfs.vfat -F 32 "$BOOT_PART" &&
+		yes | mkfs.ext4 "$ROOT_PART"
+
+	# Encrypted
+	! [ "$CRYPT_PASSWD" = "" ] &&
+		yes | mkfs.vfat -F 32 "$BOOT_PART" &&
+		encrypt_root &&
+		yes | mkfs.ext4 /dev/mapper/cryptroot
 }
 
 # Mount the partitions
 mount_gpt() {
-	mount "$ROOT_PART" /mnt
-	mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
+
+	# Non-encrypted
+	[ "$CRYPT_PASSWD" = "" ] &&
+		mount "$ROOT_PART" /mnt && 
+		mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
+
+	# Encrypted
+	! [ "$CRYPT_PASSWD" = "" ] &&
+		mount /dev/mapper/cryptroot /mnt &&
+		mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
 }
 
 # Install essencial packages
@@ -133,9 +151,9 @@ generate_fstab() {
 }
 
 change_root() {
-	curl $CHROOT > /mnt/chroot.sh && 
+	curl $CHROOT > /mnt/chroot.sh &&
 		mv ./* /mnt &&
-		arch-chroot /mnt bash chroot.sh && 
+		arch-chroot /mnt bash chroot.sh &&
 		rm /mnt/chroot.sh
 }
 
@@ -150,7 +168,7 @@ uncomment_locale() {
 
 set_lang_var() {
 	echo "LANG=${1}" > /etc/locale.conf
-	
+
 }
 
 set_keyboard_var() {
@@ -158,42 +176,88 @@ set_keyboard_var() {
 }
 
 generate_locales() {
-	[ "$COUNTRY" = "Portugal" ] && 
+	[ "$COUNTRY" = "Portugal" ] &&
 		uncomment_locale "en_US.UTF-8" &&
 		uncomment_locale "pt_PT.UTF-8" &&
 		locale-gen && set_lang_var "en_US.UTF-8" && set_keyboard_var "$KEY_LAYOUT"
 }
 
+# Set hostname
 set_hostname() {
 	echo "$HOSTNAME" > /etc/hostname
 }
 
+# Create hosts file
 set_hosts() {
-	printf "127.0.0.1	localhost\n::1		localhost\n127.0.1.1	${HOSTNAME}.localdomain	${HOSTNAME}" >> /etc/hosts
+cat <<EOF > /etc/hosts
+127.0.0.1	localhost
+::1			localhost
+127.0.1.1	${HOSTNAME}.localdomain	${HOSTNAME}
+EOF
 }
 
+# Create initramfs
 create_initramfs() {
 	mkinitcpio -P
 }
 
+# Set the password for the given user
 set_password() {
 	echo "${1}:${2}" | chpasswd
 }
 
+# Install systemd-boot
 install_systemd_boot() {
-	
+
 	# Install the bootloader
 	bootctl --path=/boot install
 
+	# Create the loader entry and make it default
 	create_loader_entry
 	change_default_entry "arch"
+
+	# Change hooks if encryption is choosen
+	! [ "$CRYPT_PASSWD" = "" ] &&
+		sed -i "s/HOOKS=.*/HOOKS=(base systemd autodetect keyboard sd-vconsole modconf block sd-encrypt filesystems fsck)/g" /etc/mkinitcpio.conf &&
+		create_initramfs
 }
 
+# Change systemd-boot default loader entry
 change_default_entry() {
-	
+
 	sed -i "s/default.*/default\t${1}.conf/g" /boot/loader/loader.conf
 }
 
+# Create systemd-boot loader entry
 create_loader_entry() {
-	printf "title\tArch\nlinux\t/vmlinuz-linux\ninitrd\t/intel-ucode.img\ninitrd\t/initramfs-linux-fallback.img\toptions root=${ROOT_PART} rw" > /boot/loader/entries/arch.conf
+
+	[ "$CRYPT_PASSWD" = "" ] &&
+cat <<EOF > /boot/loader/entries/arch.conf
+title	Arch
+linux	/vmlinuz-linux
+initrd	/intel-ucode.img
+initrd	/initramfs-linux-fallback.img
+options root=${ROOT_PART} rw
+EOF
+
+	! [ "$CRYPT_PASSWD" = "" ] &&
+		UUID=$(blkid | grep /dev/sda2 | awk {'print $2'} | awk -F '"' {'print $2'}) &&
+cat <<EOF > /boot/loader/entries/arch.conf
+title	Arch
+linux	/vmlinuz-linux
+initrd	/intel-ucode.img
+initrd	/initramfs-linux-fallback.img
+options rd.luks.name=${UUID}=cryptroot root=/dev/mapper/cryptroot rw
+EOF
+
+}
+
+# Encrypt the root partition
+encrypt_root() {
+
+	# Encrypt the partition
+	echo "$CRYPT_PASSWD" | cryptsetup -q luksFormat "$ROOT_PART"
+
+	# Open the partition
+	echo "$CRYPT_PASSWD" | cryptsetup open "$ROOT_PART" cryptroot
 }

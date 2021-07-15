@@ -1,18 +1,19 @@
 #!/bin/bash
 # Script to deploy the installer
 
-# Dependency files
-INSTALL="https://raw.githubusercontent.com/pedroclobo/arch/main/src/install.sh"
-LIBRARY="https://raw.githubusercontent.com/pedroclobo/arch/main/src/library.sh"
-STDIN="https://raw.githubusercontent.com/pedroclobo/arch/main/src/stdin.sh"
+# Repository link and files
+REPO_LINK="https://raw.githubusercontent.com/pedroclobo/arch/main/src/"
+files=("install.sh" "library.sh" "stdin.sh")
 
-# Download the files
-wget "$INSTALL"
-wget "$LIBRARY"
-wget "$STDIN"
+# Dependency packages
+pacman -Syy wget --noconfirm
 
-# Make the files executable
-chmod +x install.sh library.sh stdin.sh
+# Download the files and make them executable
+for file in ${files[@]}
+do
+	wget ${REPO_LINK}"$file"
+	chmod +x "$file"
+done
 
 # Start the installer
 bash install.sh

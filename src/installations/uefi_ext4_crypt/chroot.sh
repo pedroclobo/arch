@@ -16,9 +16,6 @@ generate_locales
 # Network configuration
 set_hostname && set_hosts
 
-# Initramfs
-create_initramfs
-
 # Root password
 set_password "root" "$PASSWD"
 

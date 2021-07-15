@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Installation files
-UEFI_EXT4="https://raw.githubusercontent.com/pedroclobo/arch/main/src/installations/uefi_ext4/install.sh"
-UEFI_EXT4_CRYPT="https://raw.githubusercontent.com/pedroclobo/arch/main/src/installations/uefi_ext4_crypt/install.sh"
-
 # Source functions
 source ./library.sh
 source ./stdin.sh
+
+# Installation files
+UEFI_EXT4="https://raw.githubusercontent.com/pedroclobo/arch/main/src/installations/uefi_ext4/install.sh"
+UEFI_EXT4_CRYPT="https://raw.githubusercontent.com/pedroclobo/arch/main/src/installations/uefi_ext4_crypt/install.sh"
 
 # Check if the system supports UEFI
 export_uefi_variable() {
@@ -22,9 +22,6 @@ download_installer() {
 
 # Initialize the script
 initialize_script() {
-
-	# Install dependencies
-	install "wget"
 
 	# Check for UEFI support
 	export_uefi_variable
@@ -51,7 +48,7 @@ initialize_installer() {
 initialize_script && clear
 
 # Get user input
-get_keyboard_layout
+get_keymap
 get_country
 get_disks
 get_filesystem
@@ -60,7 +57,6 @@ get_hostname
 get_passwd
 get_timezone
 get_confirmation
-source "$VAR_FILE"
 
 # Initialize the installer
 initialize_installer

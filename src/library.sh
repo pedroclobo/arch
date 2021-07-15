@@ -28,46 +28,9 @@ update_mirrors() {
 	refresh_mirrors
 }
 
-# List all available keyboard layouts
-list_keyboard_layouts() {
-	localectl list-keymaps
-}
-
 # Set keyboard layout
 set_keyboard_layout() {
 	loadkeys $1
-}
-
-# Recognizes a keyboard layout
-is_keyboard_layout() {
-	localectl list-keymaps | grep -q -wx "$1"
-}
-
-# List all disks available and their sizes
-list_disks() {
-	lsblk -l | grep disk | awk '{print "/dev/"$1, "(" $4 ")"}'
-}
-
-# Check for a valid disk
-is_disk() {
-	lsblk -l | grep disk | awk '{print "/dev/"$1}' | grep -q -wx "$1"
-}
-
-
-list_filesystems() {
-	echo "ext4"
-}
-
-is_filesystem() {
-	list_filesystems | grep -q -wx "$1"
-}
-
-list_timezones() {
-	timedatectl list-timezones
-}
-
-is_timezone() {
-	list_timezones | grep -q -wx "$1"
 }
 
 # Update the system clock
@@ -260,4 +223,12 @@ encrypt_root() {
 
 	# Open the partition
 	echo "$CRYPT_PASSWD" | cryptsetup open "$ROOT_PART" cryptroot
+}
+
+get_disk_size() {
+	
+	disk_sizes=$(lsblk -l | awk '/disk/ {print "/dev/"$1, $4}')
+	size=$(echo $disk_sizes | grep "$1" | awk '{print $2}')
+
+	echo "$size"
 }

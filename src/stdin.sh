@@ -51,7 +51,7 @@ export_variable() {
 
 # Print the configuration file
 print_varfile() {
-	sed "" "$VAR_FILE"
+	sed "/PASSWD/d;/CRYPT_PASSWD/d" "$VAR_FILE"
 }
 
 # Check if input is a number

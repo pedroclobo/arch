@@ -50,7 +50,7 @@ initialize_script && clear
 # Get user input
 get_keymap
 get_country
-get_disks
+get_disk
 get_filesystem
 get_crypt_passwd
 get_hostname

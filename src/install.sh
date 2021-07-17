@@ -8,55 +8,49 @@ source ./stdin.sh
 UEFI_EXT4="https://raw.githubusercontent.com/pedroclobo/arch/main/src/installations/uefi_ext4/install.sh"
 UEFI_EXT4_CRYPT="https://raw.githubusercontent.com/pedroclobo/arch/main/src/installations/uefi_ext4_crypt/install.sh"
 
-# Check if the system supports UEFI
-export_uefi_variable() {
-is_uefi_system &&
-	export_variable "UEFI" 1 ||
-	export_variable "UEFI" 0
-}
+# Execute installer script
+execute_installer() {
 
-# Download installer script
-download_installer() {
-	wget "$1" -O "installer.sh"
-}
+	# Download the installer
+	wget -q "$1" -O "installer.sh"
 
-# Initialize the script
-initialize_script() {
-
-	# Check for UEFI support
-	export_uefi_variable
+	# Make it executable and run it
+	chmod +x ./installer.sh && bash installer.sh
 }
 
 # Initilize the installer based on the choosen filesystem
 initialize_installer() {
 
-	# UEFI install with ext4 filesystem
-	[ "$UEFI" = "1" ] && [ "$FILESYSTEM" = "ext4" ] && [ "$CRYPT_PASSWD" = "" ] &&
-		download_installer "$UEFI_EXT4" && chmod +x ./installer.sh && clear && bash installer.sh
-
-	# Encrypted UEFI install with ext4 filesystem
-	[ "$UEFI" = "1" ] && [ "$FILESYSTEM" = "ext4" ] && ! [ "$CRYPT_PASSWD" = "" ] &&
-		download_installer "$UEFI_EXT4_CRYPT" && chmod +x ./installer.sh && clear && bash installer.sh
-
+	# Various installs
+	if is_uefi_system; then
+		if [ "$(get_filesystem)" = "ext4" ]; then
+			if [ "$(get_cryptpasswd)" = "" ]; then
+				execute_installer "$UEFI_EXT4"
+			else
+				execute_installer "$UEFI_EXT4_CRYPT"
+			fi
+		fi
+	fi
 }
 
 ###################
 ### Instalation ###
 ###################
 
-# Prepare the installer
-initialize_script && clear
+# Clear the screen
+clear
 
 # Get user input
-get_keymap
-get_country
-get_disk
-get_filesystem
-get_crypt_passwd
-get_hostname
-get_passwd
-get_timezone
-get_confirmation
+create_varfile
+prompt_keymap
+prompt_country
+prompt_disk
+prompt_filesystem
+prompt_crypt_passwd
+prompt_hostname
+prompt_passwd
+prompt_timezone
+prompt_confirmation
 
 # Initialize the installer
 initialize_installer

@@ -1,5 +1,5 @@
 #!/bin/bash
-# File with all install related functions
+# File with all primative functions
 
 # Check if the boot mode if UEFI
 is_uefi_system() {
@@ -8,29 +8,29 @@ is_uefi_system() {
 
 # Install a package through pacman
 install() {
-	pacman -S $@ --noconfirm
+	pacman -S "$@" --noconfirm
 }
 
-# Sincronize mirrors
+# Refresh pacman mirrors
 refresh_mirrors() {
 	pacman -Syy
 }
 
 # Check if a package is installed
 is_installed() {
-	pacman -Qnq | grep -q -wx $1
+	pacman -Qnq | grep -q -wx "$1"
 }
 
-# Sort pacman mirrors based on speed and location
-# and refresh them
+# Sort pacman mirrors based on speed
+# and location and refresh them
 update_mirrors() {
-	reflector -c "$1" -a 6 --sort rate --save /etc/pacman.d/mirrorlist
+	reflector -c "$1" -a 6 --sort rate --save "/etc/pacman.d/mirrorlist"
 	refresh_mirrors
 }
 
 # Set keyboard layout
 set_keyboard_layout() {
-	loadkeys $1
+	loadkeys "$1"
 }
 
 # Update the system clock
@@ -42,6 +42,7 @@ update_clock() {
 partition_mbr() {
 	SIZE_1=$((1 + BOOT_SIZE))
 	SIZE_2=$((SIZE_1 + SWAP_SIZE))
+	DISK=$(get_disk)
 
 	parted --script -a optimal "$DISK" \
 		mklabel msdos \
@@ -59,6 +60,7 @@ partition_mbr() {
 # Partition the disk with GPT for UEFI
 partition_gpt() {
 	SIZE_1=$((1 + BOOT_SIZE))
+	DISK=$(get_disk)
 
 	# Creating the boot, swap and root partition
 	parted --script -a optimal "$DISK" \
@@ -77,6 +79,7 @@ partition_gpt() {
 
 # Format the partition for UEFI with the ext4 filesystem
 format_gpt() {
+	CRYPT_PASSWD=$(get_cryptpasswd)
 
 	# Non-encrypted
 	[ "$CRYPT_PASSWD" = "" ] &&
@@ -92,10 +95,11 @@ format_gpt() {
 
 # Mount the partitions
 mount_gpt() {
+	CRYPT_PASSWD=$(get_cryptpasswd)
 
 	# Non-encrypted
 	[ "$CRYPT_PASSWD" = "" ] &&
-		mount "$ROOT_PART" /mnt && 
+		mount "$ROOT_PART" /mnt &&
 		mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
 
 	# Encrypted
@@ -114,7 +118,7 @@ generate_fstab() {
 }
 
 change_root() {
-	curl $CHROOT > /mnt/chroot.sh &&
+	curl "$CHROOT" > /mnt/chroot.sh &&
 		mv ./* /mnt &&
 		arch-chroot /mnt bash chroot.sh &&
 		rm /mnt/chroot.sh
@@ -126,7 +130,7 @@ set_time_zone() {
 }
 
 uncomment_locale() {
-	sed -i "s/#"$1"/"$1"/g" /etc/locale.gen
+	sed -i "s/#${1}/${1}/g" /etc/locale.gen
 }
 
 set_lang_var() {
@@ -135,10 +139,13 @@ set_lang_var() {
 }
 
 set_keyboard_var() {
+	KEY_LAYOUT=$(get_keymap)
 	echo "KEYMAP=${KEY_LAYOUT}" >> /etc/vconsole.conf
 }
 
 generate_locales() {
+	COUNTRY=$(get_country)
+	KEY_LAYOUT=$(get_keymap)
 	[ "$COUNTRY" = "Portugal" ] &&
 		uncomment_locale "en_US.UTF-8" &&
 		uncomment_locale "pt_PT.UTF-8" &&
@@ -147,11 +154,13 @@ generate_locales() {
 
 # Set hostname
 set_hostname() {
+	HOSTNAME=$(get_hostname)
 	echo "$HOSTNAME" > /etc/hostname
 }
 
 # Create hosts file
 set_hosts() {
+	HOSTNAME=$(get_hostname)
 cat <<EOF > /etc/hosts
 127.0.0.1	localhost
 ::1			localhost
@@ -171,6 +180,7 @@ set_password() {
 
 # Install systemd-boot
 install_systemd_boot() {
+	CRYPT_PASSWD=$(get_cryptpasswd)
 
 	# Install the bootloader
 	bootctl --path=/boot install
@@ -193,6 +203,7 @@ change_default_entry() {
 
 # Create systemd-boot loader entry
 create_loader_entry() {
+	CRYPT_PASSWD=$(get_cryptpasswd)
 
 	[ "$CRYPT_PASSWD" = "" ] &&
 cat <<EOF > /boot/loader/entries/arch.conf
@@ -217,6 +228,7 @@ EOF
 
 # Encrypt the root partition
 encrypt_root() {
+	CRYPT_PASSWD=$(get_cryptpasswd)
 
 	# Encrypt the partition
 	echo "$CRYPT_PASSWD" | cryptsetup -q luksFormat "$ROOT_PART"
@@ -226,9 +238,9 @@ encrypt_root() {
 }
 
 get_disk_size() {
-	
+
 	disk_sizes=$(lsblk -l | awk '/disk/ {print "/dev/"$1, $4}')
-	size=$(echo $disk_sizes | grep "$1" | awk '{print $2}')
+	size=$(echo "$disk_sizes" | grep "$1" | awk '{print $2}')
 
 	echo "$size"
 }

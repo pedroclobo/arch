@@ -3,12 +3,11 @@
 # Source functions
 source ./library.sh
 source ./stdin.sh
-source "$VAR_FILE"
 
 ### Configure the system
 
 # Time zone
-set_time_zone "$TIME_ZONE"
+set_time_zone "$(get_timezone)"
 
 # Localization
 generate_locales
@@ -17,7 +16,7 @@ generate_locales
 set_hostname && set_hosts
 
 # Root password
-set_password "root" "$PASSWD"
+set_password "root" "$(get_passwd)"
 
 # Bootloader
 install "intel-ucode"

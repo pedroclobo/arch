@@ -42,9 +42,8 @@ update_clock() {
 partition_mbr() {
 	SIZE_1=$((1 + BOOT_SIZE))
 	SIZE_2=$((SIZE_1 + SWAP_SIZE))
-	DISK=$(get_disk)
 
-	parted --script -a optimal "$DISK" \
+	parted --script -a optimal "$(get_disk)" \
 		mklabel msdos \
 		unit mib \
 		mkpart primary 1 "$SIZE_1" \
@@ -52,18 +51,17 @@ partition_mbr() {
 		-- mkpart primary "$SIZE_2" -1 \
 
 	# Export disk variables
-	export_variable BOOT_PART "$DISK""1"
-	export_variable SWAP_PART "$DISK""2"
-	export_variable ROOT_PART "$DISK""3"
+	export_variable BOOT_PART "$(get_disk)""1"
+	export_variable SWAP_PART "$(get_disk)""2"
+	export_variable ROOT_PART "$(get_disk)""3"
 }
 
 # Partition the disk with GPT for UEFI
 partition_gpt() {
 	SIZE_1=$((1 + BOOT_SIZE))
-	DISK=$(get_disk)
 
 	# Creating the boot, swap and root partition
-	parted --script -a optimal "$DISK" \
+	parted --script -a optimal "$(get_disk)" \
 		mklabel gpt \
 		unit mib \
 		mkpart primary 1 "$SIZE_1" \
@@ -73,21 +71,20 @@ partition_gpt() {
 		name 2 rootfs
 
 	# Export disk variables
-	export_variable "BOOT_PART" "$DISK""1"
-	export_variable "ROOT_PART" "$DISK""2"
+	export_variable "BOOT_PART" "$(get_disk)""1"
+	export_variable "ROOT_PART" "$(get_disk)""2"
 }
 
 # Format the partition for UEFI with the ext4 filesystem
 format_gpt() {
-	CRYPT_PASSWD=$(get_cryptpasswd)
 
 	# Non-encrypted
-	[ "$CRYPT_PASSWD" = "" ] &&
+	[ "$(get_cryptpasswd)" = "" ] &&
 		yes | mkfs.vfat -F 32 "$BOOT_PART" &&
 		yes | mkfs.ext4 "$ROOT_PART"
 
 	# Encrypted
-	! [ "$CRYPT_PASSWD" = "" ] &&
+	! [ "$(get_cryptpasswd)" = "" ] &&
 		yes | mkfs.vfat -F 32 "$BOOT_PART" &&
 		encrypt_root &&
 		yes | mkfs.ext4 /dev/mapper/cryptroot
@@ -95,15 +92,14 @@ format_gpt() {
 
 # Mount the partitions
 mount_gpt() {
-	CRYPT_PASSWD=$(get_cryptpasswd)
 
 	# Non-encrypted
-	[ "$CRYPT_PASSWD" = "" ] &&
+	[ "$(get_cryptpasswd)" = "" ] &&
 		mount "$ROOT_PART" /mnt &&
 		mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
 
 	# Encrypted
-	! [ "$CRYPT_PASSWD" = "" ] &&
+	! [ "$(get_cryptpasswd)" = "" ] &&
 		mount /dev/mapper/cryptroot /mnt &&
 		mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
 }
@@ -139,32 +135,29 @@ set_lang_var() {
 }
 
 set_keyboard_var() {
-	KEY_LAYOUT=$(get_keymap)
-	echo "KEYMAP=${KEY_LAYOUT}" >> /etc/vconsole.conf
+	echo "KEYMAP=$(get_keymap)}" >> /etc/vconsole.conf
 }
 
 generate_locales() {
-	COUNTRY=$(get_country)
-	KEY_LAYOUT=$(get_keymap)
-	[ "$COUNTRY" = "Portugal" ] &&
-		uncomment_locale "en_US.UTF-8" &&
-		uncomment_locale "pt_PT.UTF-8" &&
-		locale-gen && set_lang_var "en_US.UTF-8" && set_keyboard_var "$KEY_LAYOUT"
+	if [ "$(get_country)" = "Portugal" ]; then
+		uncomment_locale "en_US.UTF-8"
+		uncomment_locale "pt_PT.UTF-8"
+		locale-gen && set_lang_var "en_US.UTF-8" 
+		set_keyboard_var "$(get_keymap)"
+	fi
 }
 
 # Set hostname
 set_hostname() {
-	HOSTNAME=$(get_hostname)
-	echo "$HOSTNAME" > /etc/hostname
+	echo "$(get_hostname)" > /etc/hostname
 }
 
 # Create hosts file
 set_hosts() {
-	HOSTNAME=$(get_hostname)
 cat <<EOF > /etc/hosts
 127.0.0.1	localhost
 ::1			localhost
-127.0.1.1	${HOSTNAME}.localdomain	${HOSTNAME}
+127.0.1.1	$(get_hostname).localdomain	$(get_hostname)
 EOF
 }
 
@@ -180,7 +173,6 @@ set_password() {
 
 # Install systemd-boot
 install_systemd_boot() {
-	CRYPT_PASSWD=$(get_cryptpasswd)
 
 	# Install the bootloader
 	bootctl --path=/boot install
@@ -190,9 +182,10 @@ install_systemd_boot() {
 	change_default_entry "arch"
 
 	# Change hooks if encryption is choosen
-	! [ "$CRYPT_PASSWD" = "" ] &&
-		sed -i "s/HOOKS=.*/HOOKS=(base systemd autodetect keyboard sd-vconsole modconf block sd-encrypt filesystems fsck)/g" /etc/mkinitcpio.conf &&
+	if ! [ "$(get_cryptpasswd)" = "" ]; then
+		sed -i "s/HOOKS=.*/HOOKS=(base systemd autodetect keyboard sd-vconsole modconf block sd-encrypt filesystems fsck)/g" /etc/mkinitcpio.conf
 		create_initramfs
+	fi
 }
 
 # Change systemd-boot default loader entry
@@ -203,9 +196,8 @@ change_default_entry() {
 
 # Create systemd-boot loader entry
 create_loader_entry() {
-	CRYPT_PASSWD=$(get_cryptpasswd)
 
-	[ "$CRYPT_PASSWD" = "" ] &&
+	if [ "$(get_cryptpasswd)" = "" ]; then
 cat <<EOF > /boot/loader/entries/arch.conf
 title	Arch
 linux	/vmlinuz-linux
@@ -213,8 +205,9 @@ initrd	/intel-ucode.img
 initrd	/initramfs-linux-fallback.img
 options root=${ROOT_PART} rw
 EOF
+	fi
 
-	! [ "$CRYPT_PASSWD" = "" ] &&
+	else if	! [ "$(get_cryptpasswd)" = "" ]; then
 		UUID=$(blkid | grep /dev/sda2 | awk {'print $2'} | awk -F '"' {'print $2'}) &&
 cat <<EOF > /boot/loader/entries/arch.conf
 title	Arch
@@ -223,18 +216,17 @@ initrd	/intel-ucode.img
 initrd	/initramfs-linux-fallback.img
 options rd.luks.name=${UUID}=cryptroot root=/dev/mapper/cryptroot rw
 EOF
-
+	fi
 }
 
 # Encrypt the root partition
 encrypt_root() {
-	CRYPT_PASSWD=$(get_cryptpasswd)
 
 	# Encrypt the partition
-	echo "$CRYPT_PASSWD" | cryptsetup -q luksFormat "$ROOT_PART"
+	echo "$(get_cryptpasswd)" | cryptsetup -q luksFormat "$ROOT_PART"
 
 	# Open the partition
-	echo "$CRYPT_PASSWD" | cryptsetup open "$ROOT_PART" cryptroot
+	echo "$(get_cryptpasswd)" | cryptsetup open "$ROOT_PART" cryptroot
 }
 
 get_disk_size() {

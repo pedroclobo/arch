@@ -5,7 +5,7 @@
 source ./library.sh
 
 # File to store the variables
-VAR_FILE="./variables.csv"
+VAR_FILE="./variables"
 
 # String colors
 RED='\033[0;31m'
@@ -52,24 +52,19 @@ readarray -t disks <<< "$(lsblk -l | awk '/disk/ {print "/dev/"$1""}')"
 filesystems=("ext4")
 readarray -t timezones <<< "$(timedatectl list-timezones)"
 
-# Create the variable's file
-create_varfile() {
-	echo "#Variable,#Value" > "$VAR_FILE"
-}
-
 # Print the configuration file
 print_varfile() {
-	sed "/Password/d;/Encryption Password/d;s/,/: /g" "$VAR_FILE"
+	sed "/Password/d;/Encryption Password/d;s/=/: /g" "$VAR_FILE"
 }
 
 # Export variable to variable's file
 export_variable() {
-	echo "$1,\"$2\"" >> "$VAR_FILE"
+	echo "$1=\"$2\"" >> "$VAR_FILE"
 }
 
 # Returns the value of the specified variable
 get_variable() {
-	grep "$1" "$VAR_FILE" | awk -F ',' '{print $2}' | sed "s/\"//g"
+	grep "$1" "$VAR_FILE" | awk -F '=' '{print $2}' | sed "s/\"//g"
 
 }
 
@@ -442,7 +437,7 @@ prompt_confirmation() {
 	printf "%s\n\n" "$MSG_REVIEW_CONFIGURATION"
 
 	# Print the configuration
-	print_varfile && print "\n"
+	print_varfile && printf "\n"
 
 	# Ask for proceed confirmation
 	printf "%s" "$MSG_CONFIRMATION" && read -r answer

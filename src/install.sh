@@ -41,7 +41,6 @@ initialize_installer() {
 clear
 
 # Get user input
-create_varfile
 prompt_keymap
 prompt_country
 prompt_disk

@@ -9,9 +9,9 @@ files=("install.sh" "library.sh" "stdin.sh")
 pacman -Syy wget --noconfirm >/dev/null 2>&1
 
 # Download the files and make them executable
-for file in ${files[@]}
+for file in "${files[@]}"
 do
-	wget -q ${REPO_LINK}"$file"
+	wget -q "${REPO_LINK}""$file"
 	chmod +x "$file"
 done
 

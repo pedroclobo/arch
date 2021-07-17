@@ -205,9 +205,8 @@ initrd	/intel-ucode.img
 initrd	/initramfs-linux-fallback.img
 options root=${ROOT_PART} rw
 EOF
-	fi
 
-	else if	! [ "$(get_cryptpasswd)" = "" ]; then
+	elif ! [ "$(get_cryptpasswd)" = "" ]; then
 		UUID=$(blkid | grep /dev/sda2 | awk {'print $2'} | awk -F '"' {'print $2'}) &&
 cat <<EOF > /boot/loader/entries/arch.conf
 title	Arch

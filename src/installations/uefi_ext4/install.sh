@@ -8,7 +8,6 @@ BOOT_SIZE="260"
 
 # Source functions
 source ./library.sh
-source ./stdin.sh
 
 
 ### Pre-installation
@@ -29,7 +28,7 @@ mount_gpt
 ### Installation
 
 # Select the mirrors
-update_mirrors "$(get_country)"
+update_mirrors "$country"
 
 # Install essential packages
 install_essential

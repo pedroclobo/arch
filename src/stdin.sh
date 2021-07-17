@@ -4,9 +4,6 @@
 # Source functions
 source ./library.sh
 
-# File to store the variables
-VAR_FILE="./variables"
-
 # String colors
 RED='\033[0;31m'
 NC='\033[0m'
@@ -51,22 +48,6 @@ countries=("Portugal")
 readarray -t disks <<< "$(lsblk -l | awk '/disk/ {print "/dev/"$1""}')"
 filesystems=("ext4")
 readarray -t timezones <<< "$(timedatectl list-timezones)"
-
-# Print the configuration file
-print_varfile() {
-	sed "/Password/d;/Encryption/d;s/=/: /g" "$VAR_FILE"
-}
-
-# Export variable to variable's file
-export_variable() {
-	echo "$1=\"$2\"" >> "$VAR_FILE"
-}
-
-# Returns the value of the specified variable
-get_variable() {
-	grep "$1" "$VAR_FILE" | awk -F '=' '{print $2}' | sed "s/\"//g"
-
-}
 
 # Check if input is a number
 is_number() {
@@ -249,7 +230,7 @@ prompt_keymap() {
 	done
 
 	# Export variable
-	export_variable "Keyboard Layout" "$keymap" && clear
+	export keymap && clear
 }
 
 # Prompt for location
@@ -276,7 +257,7 @@ prompt_country() {
 	done
 
 	# Export variable
-	export_variable "Country" "$country" && clear
+	export country && clear
 }
 
 # Prompt for disk to install OS to
@@ -303,7 +284,7 @@ prompt_disk() {
 	done
 
 	# Export variable
-	export_variable "Disk" "$disk" && clear
+	export disk && clear
 }
 
 # Prompt for filesystem to format the disk with
@@ -313,24 +294,24 @@ prompt_filesystem() {
 	list_filesystems
 
 	# Prompt for country
-	printf "%s" "$MSG_CHOOSE_FS" && read -r fs
+	printf "%s" "$MSG_CHOOSE_FS" && read -r filesystem
 
 	# While an invalid country is introduced, prompt for a new input
-	while ! (is_valid_filesystem "$fs"); do
+	while ! (is_valid_filesystem "$filesystem"); do
 
 		# Case the input is a list index
-		if is_number "$fs"; then
-			fs=${filesystems["$fs"]}
+		if is_number "$filesystem"; then
+			filesystem=${filesystems["$fs"]}
 
 		# Invalid country message and prompt for a new input
 		else
-			printf "${RED}%s${NC} %s" "$MSG_INVALID_FS" "$MSG_RETRY_FS" && read -r fs
+			printf "${RED}%s${NC} %s" "$MSG_INVALID_FS" "$MSG_RETRY_FS" && read -r filesystem
 		fi
 
 	done
 
 	# Export variable
-	export_variable "Filesystem" "$fs" && clear
+	export filesystem && clear
 }
 
 # Prompt for the encryption password
@@ -348,7 +329,8 @@ prompt_crypt_passwd() {
 	done
 
 	# Export variable
-	export_variable "Encryption" "$pass1" && clear
+	crypt_passwd="$pass1"
+	export crypt_passwd && clear
 }
 
 # Prompt for hostname
@@ -358,7 +340,7 @@ prompt_hostname() {
 	printf "%s" "$MSG_CHOOSE_HOSTNAME" && read -r hostname
 
 	# Export variable
-	export_variable "Hostname" "$hostname" && clear
+	export hostname && clear
 }
 
 # Prompt for root user password
@@ -376,22 +358,23 @@ prompt_passwd() {
 	done
 
 	# Export variable
-	export_variable "Password" "$pass1" && clear
+	passwd="$pass1"
+	export passwd && clear
 }
 
 # Prompt for a user name
 prompt_username() {
 
 	# Prompt for user name
-	printf "%s" "$MSG_ADD_USER" && read -r name
+	printf "%s" "$MSG_ADD_USER" && read -r user
 
 	# Prompt for new user name if it contains non-allowed characters
-	while ! (is_valid_user "$name"); do
-		printf "${RED}%s${NC} %s" "$MSG_INVALID_USER" "$MSG_RETRY_USER" && read -r name
+	while ! (is_valid_user "$user"); do
+		printf "${RED}%s${NC} %s" "$MSG_INVALID_USER" "$MSG_RETRY_USER" && read -r user
 	done
 
 	# Export variable
-	export_variable "User" "$name" && clear
+	export user && clear
 }
 
 # Prompt for timezone
@@ -427,17 +410,17 @@ prompt_timezone() {
 	done
 
 	# Export variable
-	export_variable "Time Zone" "$timezone" && clear
+	export timezone && clear
 }
 
 # Prompt for confirmation
 prompt_confirmation() {
 
-	# Prompt the user to review the configuration
-	printf "%s\n\n" "$MSG_REVIEW_CONFIGURATION"
-
-	# Print the configuration
-	print_varfile && printf "\n"
+#	# Prompt the user to review the configuration
+#	printf "%s\n\n" "$MSG_REVIEW_CONFIGURATION"
+#
+#	# Print the configuration
+#	print_varfile && printf "\n"
 
 	# Ask for proceed confirmation
 	printf "%s" "$MSG_CONFIRMATION" && read -r answer
@@ -453,44 +436,4 @@ prompt_confirmation() {
 			sleep 1
 		done
 	clear
-}
-
-# Return the chosen keymap
-get_keymap() {
-	get_variable "Keyboard Layout"
-}
-
-# Return the chosen country
-get_country() {
-	get_variable "Country"
-}
-
-# Return the chosen disk
-get_disk() {
-	get_variable "Disk"
-}
-
-# Return the chosen filesystem
-get_filesystem() {
-	get_variable "Filesystem"
-}
-
-# Return the chosen encryption password
-get_cryptpasswd() {
-	get_variable "Encryption"
-}
-
-# Return the chosen password
-get_passwd() {
-	get_variable "Password"
-}
-
-# Return the chosen hostname
-get_hostname() {
-	get_variable "Hostname"
-}
-
-# Return the chosen time zone
-get_timezone() {
-	get_variable "Time Zone"
 }

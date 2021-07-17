@@ -23,8 +23,8 @@ initialize_installer() {
 
 	# Various installs
 	if is_uefi_system; then
-		if [ "$(get_filesystem)" = "ext4" ]; then
-			if [ "$(get_cryptpasswd)" = "" ]; then
+		if [ "$filesystem" = "ext4" ]; then
+			if [ "$crypt_passwd" = "" ]; then
 				execute_installer "$UEFI_EXT4"
 			else
 				execute_installer "$UEFI_EXT4_CRYPT"

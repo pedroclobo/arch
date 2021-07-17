@@ -490,6 +490,11 @@ get_passwd() {
 	get_variable "Password"
 }
 
+# Return the chosen hostname
+get_hostname() {
+	get_variable "Hostname"
+}
+
 # Return the chosen time zone
 get_timezone() {
 	get_variable "Time Zone"

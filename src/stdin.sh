@@ -54,7 +54,7 @@ readarray -t timezones <<< "$(timedatectl list-timezones)"
 
 # Print the configuration file
 print_varfile() {
-	sed "/Password/d;/Encryption Password/d;s/=/: /g" "$VAR_FILE"
+	sed "/Password/d;/Encryption/d;s/=/: /g" "$VAR_FILE"
 }
 
 # Export variable to variable's file
@@ -348,7 +348,7 @@ prompt_crypt_passwd() {
 	done
 
 	# Export variable
-	export_variable "Encryption Password" "$pass1" && clear
+	export_variable "Encryption" "$pass1" && clear
 }
 
 # Prompt for hostname
@@ -446,7 +446,7 @@ prompt_confirmation() {
 	[ "$answer" = "n" ] && exit
 
 	# Else, do the countdown
-	[ "$answer" = "y" ] && printf "\n\n%s\n%s" "$MSG_START_INSTALL" "$MSG_COUNTDOWN_INSTALL" && \
+	[ "$answer" = "y" ] && printf "\n${RED}%s${NC}\n\n%s" "$MSG_START_INSTALL" "$MSG_COUNTDOWN_INSTALL" && \
 		for i in 5 4 3 2 1
 		do
 			printf " %s" "$i"
@@ -477,7 +477,7 @@ get_filesystem() {
 
 # Return the chosen encryption password
 get_cryptpasswd() {
-	get_variable "Encryption Password"
+	get_variable "Encryption"
 }
 
 # Return the chosen password

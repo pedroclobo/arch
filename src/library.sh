@@ -49,6 +49,11 @@ partition_mbr() {
 		mkpart primary 1 "$SIZE_1" \
 		mkpart primary "$SIZE_1" "$SIZE_2" \
 		-- mkpart primary "$SIZE_2" -1 \
+
+	# Export disk variables
+	BOOT_PART="$(get_disk)""1" && export BOOT_PART
+	SWAP_PART="$(get_disk)""2" && export SWAP_PART
+	ROOT_PART="$(get_disk)""3" && export ROOT_PART
 }
 
 # Partition the disk with GPT for UEFI
@@ -64,6 +69,10 @@ partition_gpt() {
 		set 1 boot on \
 		-- mkpart primary "$SIZE_1" -1 \
 		name 2 rootfs
+
+	# Export disk variables
+	BOOT_PART="$(get_disk)""1" && export BOOT_PART
+	ROOT_PART="$(get_disk)""2" && export ROOT_PART
 }
 
 # Format the partition for UEFI with the ext4 filesystem
@@ -71,12 +80,12 @@ format_gpt() {
 
 	# Non-encrypted
 	[ "$(get_cryptpasswd)" = "" ] &&
-		yes | mkfs.vfat -F 32 "$(get_disk)""1" &&
-		yes | mkfs.ext4 "$(get_disk)""2"
+		yes | mkfs.vfat -F 32 "$BOOT_PART" &&
+		yes | mkfs.ext4 "$ROOT_PART"
 
 	# Encrypted
 	! [ "$(get_cryptpasswd)" = "" ] &&
-		yes | mkfs.vfat -F 32 "$(get_disk)""1" &&
+		yes | mkfs.vfat -F 32 "$BOOT_PART" &&
 		encrypt_root &&
 		yes | mkfs.ext4 /dev/mapper/cryptroot
 }
@@ -86,13 +95,13 @@ mount_gpt() {
 
 	# Non-encrypted
 	[ "$(get_cryptpasswd)" = "" ] &&
-		mount "$(get_disk)""2" /mnt &&
-		mkdir -p /mnt/boot && mount "$(get_disk)""1" /mnt/boot
+		mount "$ROOT_PART" /mnt &&
+		mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
 
 	# Encrypted
 	! [ "$(get_cryptpasswd)" = "" ] &&
 		mount /dev/mapper/cryptroot /mnt &&
-		mkdir -p /mnt/boot && mount "$(get_disk)""1" /mnt/boot
+		mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
 }
 
 # Install essencial packages
@@ -133,7 +142,7 @@ generate_locales() {
 	if [ "$(get_country)" = "Portugal" ]; then
 		uncomment_locale "en_US.UTF-8"
 		uncomment_locale "pt_PT.UTF-8"
-		locale-gen && set_lang_var "en_US.UTF-8" 
+		locale-gen && set_lang_var "en_US.UTF-8"
 		set_keyboard_var "$(get_keymap)"
 	fi
 }
@@ -194,11 +203,11 @@ title	Arch
 linux	/vmlinuz-linux
 initrd	/intel-ucode.img
 initrd	/initramfs-linux-fallback.img
-options root=$(get_disk)"1" rw
+options root=${ROOT_PART} rw
 EOF
 
 	elif ! [ "$(get_cryptpasswd)" = "" ]; then
-		UUID=$(blkid | grep "$(get_disk)""2" | awk {'print $2'} | awk -F '"' {'print $2'}) &&
+		UUID=$(blkid | grep /dev/sda2 | awk {'print $2'} | awk -F '"' {'print $2'}) &&
 cat <<EOF > /boot/loader/entries/arch.conf
 title	Arch
 linux	/vmlinuz-linux
@@ -213,10 +222,10 @@ EOF
 encrypt_root() {
 
 	# Encrypt the partition
-	get_cryptpasswd | cryptsetup -q luksFormat "$(get_disk)""2"
+	get_cryptpasswd | cryptsetup -q luksFormat "$ROOT_PART"
 
 	# Open the partition
-	get_cryptpasswd | cryptsetup open "$(get_disk)""2" cryptroot
+	get_cryptpasswd | cryptsetup open "$ROOT_PART" cryptroot
 }
 
 get_disk_size() {

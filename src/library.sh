@@ -81,12 +81,14 @@ format_gpt() {
 	if [ "$crypt_passwd" = "" ]; then
 		yes | mkfs.vfat -F 32 "$BOOT_PART"
 		yes | mkfs.ext4 "$ROOT_PART"
+		create_swapfile
 
 	# Encrypted
 	else
 		yes | mkfs.vfat -F 32 "$BOOT_PART"
 		encrypt_root
 		yes | mkfs.ext4 /dev/mapper/cryptroot
+		create_swapfile
 	fi
 }
 
@@ -222,7 +224,7 @@ options root=${ROOT_PART} rw
 EOF
 
 	else
-		UUID=$(blkid | grep /dev/sda2 | awk {'print $2'} | awk -F '"' {'print $2'}) &&
+		UUID=$(blkid | grep ${ROOT_PART} | awk {'print $2'} | awk -F '"' {'print $2'}) &&
 cat <<EOF > /boot/loader/entries/arch.conf
 title	Arch
 linux	/vmlinuz-linux
@@ -243,7 +245,7 @@ encrypt_root() {
 	echo "$crypt_passwd" | cryptsetup open "$ROOT_PART" cryptroot
 }
 
-# Returns the size of the given disk
+# Return the size of the given disk
 get_disk_size() {
 
 	# Variable with all disks and their sizes
@@ -254,3 +256,32 @@ get_disk_size() {
 
 	echo "$size"
 }
+
+# Return the size of the ram in MB
+get_ram_size() {
+	size=$(awk '/MemTotal/ {print $2}' "/proc/meminfo")
+	size=$(( size / 1024 ))
+	echo "$size"
+}
+
+# Change the value of the system swapiness
+change_system_swapiness() {
+	echo "vm.swappiness=${1}" > /etc/sysctl.d/99-swappiness.conf
+}
+
+# Create a swap file and activates it
+create_swapfile() {
+
+	# Swap is created with double RAM size
+	size=$(( 2 * get_ram_size ))
+
+	# Create the swapfile and activate it
+	dd if=/dev/zero of=/swapfile bs=1M count=${size} status=progress
+	chmod 600 /swapfile
+	mkswap /swapfile
+	swapon /swapfile
+
+	# Change system swapiness
+	change_system_swapiness "10"
+}
+

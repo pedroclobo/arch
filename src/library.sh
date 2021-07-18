@@ -46,7 +46,6 @@ partition_mbr() {
 	parted --script -a optimal "$disk" \
 		mklabel msdos \
 		unit mib \
-		mkpart primary 1 "$SIZE_1" \
 		mkpart primary "$SIZE_1" "$SIZE_2" \
 		-- mkpart primary "$SIZE_2" -1 \
 
@@ -84,7 +83,7 @@ format_gpt() {
 		yes | mkfs.ext4 "$ROOT_PART"
 
 	# Encrypted
-	elif ! [ "$cryptpasswd" = "" ]; then
+	else
 		yes | mkfs.vfat -F 32 "$BOOT_PART"
 		encrypt_root
 		yes | mkfs.ext4 /dev/mapper/cryptroot
@@ -100,7 +99,7 @@ mount_gpt() {
 		mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
 
 	# Encrypted
-	elif ! [ "$cryptpasswd" = "" ]; then
+	else
 		mount /dev/mapper/cryptroot /mnt
 		mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
 	fi
@@ -222,7 +221,7 @@ initrd	/initramfs-linux-fallback.img
 options root=${ROOT_PART} rw
 EOF
 
-	elif ! [ "$cryptpasswd" = "" ]; then
+	else
 		UUID=$(blkid | grep /dev/sda2 | awk {'print $2'} | awk -F '"' {'print $2'}) &&
 cat <<EOF > /boot/loader/entries/arch.conf
 title	Arch

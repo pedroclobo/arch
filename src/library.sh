@@ -264,7 +264,7 @@ get_ram_size() {
 	echo "$size"
 }
 
-# Change the value of the system swapiness while in installation media
+# Change the value of the system swapiness
 change_system_swapiness() {
 	echo "vm.swappiness=${1}" > /mnt/etc/sysctl.d/99-swappiness.conf
 }
@@ -280,8 +280,5 @@ create_swapfile() {
 	chmod 600 /mnt/swapfile
 	mkswap /mnt/swapfile
 	swapon /mnt/swapfile
-
-	# Change system swapiness
-	change_system_swapiness "10"
 }
 

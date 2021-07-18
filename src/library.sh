@@ -78,7 +78,7 @@ partition_gpt() {
 format_gpt() {
 
 	# Non-encrypted
-	if [ "$cryptpasswd" = "" ]; then
+	if [ "$crypt_passwd" = "" ]; then
 		yes | mkfs.vfat -F 32 "$BOOT_PART"
 		yes | mkfs.ext4 "$ROOT_PART"
 
@@ -94,7 +94,7 @@ format_gpt() {
 mount_gpt() {
 
 	# Non-encrypted
-	if [ "$cryptpasswd" = "" ]; then
+	if [ "$crypt_passwd" = "" ]; then
 		mount "$ROOT_PART" /mnt
 		mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
 
@@ -193,7 +193,7 @@ install_systemd_boot() {
 	change_default_entry "arch"
 
 	# Change hooks if encryption is choosen
-	if ! [ "$cryptpasswd" = "" ]; then
+	if ! [ "$crypt_passwd" = "" ]; then
 		change_hooks "base systemd autodetect keyboard sd-vconsole modconf block sd-encrypt filesystems fsck"
 	fi
 }
@@ -212,7 +212,7 @@ change_default_entry() {
 # Create systemd-boot loader entry
 create_loader_entry() {
 
-	if [ "$cryptpasswd" = "" ]; then
+	if [ "$crypt_passwd" = "" ]; then
 cat <<EOF > /boot/loader/entries/arch.conf
 title	Arch
 linux	/vmlinuz-linux
@@ -237,10 +237,10 @@ EOF
 encrypt_root() {
 
 	# Encrypt the partition
-	echo "$cryptpasswd" | cryptsetup -q luksFormat "$ROOT_PART"
+	echo "$crypt_passwd" | cryptsetup -q luksFormat "$ROOT_PART"
 
 	# Open the partition
-	echo "$cryptpasswd" | cryptsetup open "$ROOT_PART" cryptroot
+	echo "$crypt_passwd" | cryptsetup open "$ROOT_PART" cryptroot
 }
 
 # Returns the size of the given disk

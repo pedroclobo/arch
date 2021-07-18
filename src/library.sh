@@ -264,22 +264,22 @@ get_ram_size() {
 	echo "$size"
 }
 
-# Change the value of the system swapiness
+# Change the value of the system swapiness while in installation media
 change_system_swapiness() {
-	echo "vm.swappiness=${1}" > /etc/sysctl.d/99-swappiness.conf
+	echo "vm.swappiness=${1}" > /mnt/etc/sysctl.d/99-swappiness.conf
 }
 
-# Create a swap file and activates it
+# Create a swap file and activates it while in installation media
 create_swapfile() {
 
 	# Swap is created with double RAM size
 	size=$(( 2 * "$(get_ram_size)" ))
 
 	# Create the swapfile and activate it
-	dd if=/dev/zero of=/swapfile bs=1M count=${size} status=progress
-	chmod 600 /swapfile
-	mkswap /swapfile
-	swapon /swapfile
+	dd if=/dev/zero of=/mnt/swapfile bs=1M count=${size} status=progress
+	chmod 600 /mnt/swapfile
+	mkswap /mnt/swapfile
+	swapon /mnt/swapfile
 
 	# Change system swapiness
 	change_system_swapiness "10"

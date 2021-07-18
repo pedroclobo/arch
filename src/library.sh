@@ -81,14 +81,12 @@ format_gpt() {
 	if [ "$crypt_passwd" = "" ]; then
 		yes | mkfs.vfat -F 32 "$BOOT_PART"
 		yes | mkfs.ext4 "$ROOT_PART"
-		create_swapfile
 
 	# Encrypted
 	else
 		yes | mkfs.vfat -F 32 "$BOOT_PART"
 		encrypt_root
 		yes | mkfs.ext4 /dev/mapper/cryptroot
-		create_swapfile
 	fi
 }
 
@@ -99,11 +97,13 @@ mount_gpt() {
 	if [ "$crypt_passwd" = "" ]; then
 		mount "$ROOT_PART" /mnt
 		mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
+		create_swapfile
 
 	# Encrypted
 	else
 		mount /dev/mapper/cryptroot /mnt
 		mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
+		create_swapfile
 	fi
 }
 

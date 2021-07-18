@@ -49,6 +49,30 @@ readarray -t disks <<< "$(lsblk -l | awk '/disk/ {print "/dev/"$1""}')"
 filesystems=("ext4")
 readarray -t timezones <<< "$(timedatectl list-timezones)"
 
+
+#################
+### Functions ###
+#################
+
+# Prints the user configuration
+print_configuration() {
+
+	# Hash table with names and variables
+	declare -A variables=(
+		["Keyboard Layout"]="$keymap"
+		["Country"]="$country"
+		["Disk"]="$disk"
+		["Filesystem"]="$filesystem"
+		["Hostname"]="$hostname"
+		["Time Zone"]="$timezone"
+	)
+
+	# Print all variables to the screen
+	for name in "${!variables[@]}"; do
+		printf "%s: %s\n" "$name" "${variables["$name"]}"
+	done
+}
+
 # Check if input is a number
 is_number() {
 	case "$1" in
@@ -416,11 +440,11 @@ prompt_timezone() {
 # Prompt for confirmation
 prompt_confirmation() {
 
-#	# Prompt the user to review the configuration
-#	printf "%s\n\n" "$MSG_REVIEW_CONFIGURATION"
-#
-#	# Print the configuration
-#	print_varfile && printf "\n"
+	# Prompt the user to review the configuration
+	printf "%s\n\n" "$MSG_REVIEW_CONFIGURATION"
+
+	# Print the configuration
+	print_configuration && printf "\n"
 
 	# Ask for proceed confirmation
 	printf "%s" "$MSG_CONFIRMATION" && read -r answer

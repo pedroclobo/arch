@@ -79,29 +79,31 @@ partition_gpt() {
 format_gpt() {
 
 	# Non-encrypted
-	[ "$cryptpasswd" = "" ] &&
-		yes | mkfs.vfat -F 32 "$BOOT_PART" &&
+	if [ "$cryptpasswd" = "" ]; then
+		yes | mkfs.vfat -F 32 "$BOOT_PART"
 		yes | mkfs.ext4 "$ROOT_PART"
 
 	# Encrypted
-	! [ "$cryptpasswd" = "" ] &&
-		yes | mkfs.vfat -F 32 "$BOOT_PART" &&
-		encrypt_root &&
+	elif ! [ "$cryptpasswd" = "" ]; then
+		yes | mkfs.vfat -F 32 "$BOOT_PART"
+		encrypt_root
 		yes | mkfs.ext4 /dev/mapper/cryptroot
+	fi
 }
 
 # Mount the partitions
 mount_gpt() {
 
 	# Non-encrypted
-	[ "$cryptpasswd" = "" ] &&
-		mount "$ROOT_PART" /mnt &&
+	if [ "$cryptpasswd" = "" ]; then
+		mount "$ROOT_PART" /mnt
 		mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
 
 	# Encrypted
-	! [ "$cryptpasswd" = "" ] &&
-		mount /dev/mapper/cryptroot /mnt &&
+	elif ! [ "$cryptpasswd" = "" ]; then
+		mount /dev/mapper/cryptroot /mnt
 		mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
+	fi
 }
 
 # Install essencial packages
@@ -109,35 +111,45 @@ install_essential() {
 	pacstrap /mnt base linux linux-firmware
 }
 
+# Generate the fstab
 generate_fstab() {
 	genfstab -U /mnt >> /mnt/etc/fstab
 }
 
+# Change root into installation, cloning the new chroot script
 change_root() {
-	curl "$CHROOT" > /mnt/chroot.sh &&
-		mv ./* /mnt &&
-		arch-chroot /mnt bash chroot.sh &&
-		rm /mnt/chroot.sh
+
+	# Clone the new script, move dependencies to installation,
+	# execute script and delete it at the end
+	curl "$CHROOT" > /mnt/chroot.sh
+	mv ./*.sh /mnt
+	arch-chroot /mnt bash chroot.sh
+	rm /mnt/chroot.sh
 }
 
+# Set the time zone
 set_time_zone() {
 	ln -sf /usr/share/zoneinfo/"$1" /etc/localtime
 	hwclock --systohc
 }
 
+# Uncomment locale from locale.gen
 uncomment_locale() {
 	sed -i "s/#${1}/${1}/g" /etc/locale.gen
 }
 
+# Export language variable
 set_lang_var() {
 	echo "LANG=${1}" > /etc/locale.conf
 
 }
 
+# Export keyboard layout variable
 set_keyboard_var() {
 	echo "KEYMAP=${keymap}" >> /etc/vconsole.conf
 }
 
+# Generate locales
 generate_locales() {
 	if [ "$country" = "Portugal" ]; then
 		uncomment_locale "en_US.UTF-8"
@@ -183,14 +195,18 @@ install_systemd_boot() {
 
 	# Change hooks if encryption is choosen
 	if ! [ "$cryptpasswd" = "" ]; then
-		sed -i "s/HOOKS=.*/HOOKS=(base systemd autodetect keyboard sd-vconsole modconf block sd-encrypt filesystems fsck)/g" /etc/mkinitcpio.conf
-		create_initramfs
+		change_hooks "base systemd autodetect keyboard sd-vconsole modconf block sd-encrypt filesystems fsck"
 	fi
+}
+
+# Changes all mkinitcpio hooks with the hooks given
+change_hooks() {
+	sed -i "s/HOOKS=.*/HOOKS=(${1})/g" /etc/mkinitcpio.conf
+	create_initramfs
 }
 
 # Change systemd-boot default loader entry
 change_default_entry() {
-
 	sed -i "s/default.*/default\t${1}.conf/g" /boot/loader/loader.conf
 }
 
@@ -228,9 +244,13 @@ encrypt_root() {
 	echo "$cryptpasswd" | cryptsetup open "$ROOT_PART" cryptroot
 }
 
+# Returns the size of the given disk
 get_disk_size() {
 
+	# Variable with all disks and their sizes
 	disk_sizes=$(lsblk -l | awk '/disk/ {print "/dev/"$1, $4}')
+
+	# Get the size
 	size=$(echo "$disk_sizes" | grep "$1" | awk '{print $2}')
 
 	echo "$size"

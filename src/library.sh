@@ -224,7 +224,7 @@ options root=${ROOT_PART} rw
 EOF
 
 	else
-		UUID=$(blkid | grep ${ROOT_PART} | awk {'print $2'} | awk -F '"' {'print $2'}) &&
+		UUID=$(blkid | grep "${ROOT_PART}" | awk {'print $2'} | awk -F '"' {'print $2'}) &&
 cat <<EOF > /boot/loader/entries/arch.conf
 title	Arch
 linux	/vmlinuz-linux
@@ -273,7 +273,7 @@ change_system_swapiness() {
 create_swapfile() {
 
 	# Swap is created with double RAM size
-	size=$(( 2 * get_ram_size ))
+	size=$(( 2 * "$(get_ram_size)" ))
 
 	# Create the swapfile and activate it
 	dd if=/dev/zero of=/swapfile bs=1M count=${size} status=progress

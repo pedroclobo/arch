@@ -282,3 +282,18 @@ create_swapfile() {
 	swapon /mnt/swapfile
 }
 
+# Install video drivers
+install_drivers() {
+	if [ "$1" = "NVIDIA" ]; then
+		install "nvidia" "nvidia-utils" "nvidia-settings"
+
+	elif [ "$1" = "NVIDIA Optimus" ]; then
+		install "xf86-video-intel" "nvidia" "nvidia-utils" "nvidia-settings" "nvidia-prime"
+
+	elif [ "$1" = "AMD" ]; then
+		install "xf86-video-amdgpu"
+
+	elif [ "$1" = "Intel" ]; then
+		install "xf86-video-intel"
+	fi
+}

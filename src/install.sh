@@ -49,6 +49,7 @@ prompt_crypt_passwd
 prompt_hostname
 prompt_passwd
 prompt_timezone
+prompt_driver
 prompt_confirmation
 
 # Initialize the installer

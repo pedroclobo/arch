@@ -37,6 +37,9 @@ MSG_CHOOSE_TIMEZONE="Enter your timezone (by number of full name): "
 MSG_INVALID_TIMEZONE="Invalid timezone."
 MSG_RETRY_TIMEZONE="Please enter a valid timezone: "
 MSG_SEARCH_TIMEZONE="Search for timezone: "
+MSG_CHOOSE_DRIVER="Choose a video driver to install (by number or full name): "
+MSG_INVALID_DRIVER="You have choosen an invalid video driver."
+MSG_RETRY_DRIVER="Please enter a valid video driver: "
 MSG_REVIEW_CONFIGURATION="Please review the following configuration:"
 MSG_CONFIRMATION="Do you want to proceed to the installation? (Y/n): "
 MSG_START_INSTALL="There is no going back!"
@@ -48,6 +51,7 @@ countries=("Portugal")
 readarray -t disks <<< "$(lsblk -l | awk '/disk/ {print "/dev/"$1""}')"
 filesystems=("ext4")
 readarray -t timezones <<< "$(timedatectl list-timezones)"
+drivers=("None" "NVIDIA" "NVIDIA Optimus" "AMD" "Intel")
 
 
 #################
@@ -65,6 +69,7 @@ print_configuration() {
 		["Filesystem"]="$filesystem"
 		["Hostname"]="$hostname"
 		["Time Zone"]="$timezone"
+		["Drivers"]="$driver"
 	)
 
 	# Print all variables to the screen
@@ -207,6 +212,30 @@ is_valid_timezone() {
 	# Find element in array
 	for timezone in "${timezones[@]}"; do
 		if [[ "$timezone" == "$1" ]]; then
+			in=0 && break
+		fi
+	done
+
+	# Returns 0 if the element is found
+	return "$in"
+}
+
+# List all available video driver installs
+list_drivers() {
+	for (( i = 0; i < ${#drivers[@]}; i++ )); do
+		printf "%s: %s\n" "$i" "${drivers["$i"]}"
+	done
+}
+
+# Check if video driver install is supported
+is_valid_driver() {
+
+	# Keep track if element has been found
+	in=1
+
+	# Find element in array
+	for driver in "${drivers[@]}"; do
+		if [[ "$driver" == "$1" ]]; then
 			in=0 && break
 		fi
 	done
@@ -435,6 +464,33 @@ prompt_timezone() {
 
 	# Export variable
 	export timezone && clear
+}
+
+# Prompt for video driver to install
+prompt_driver() {
+
+	# List all drivers supported
+	list_drivers
+
+	# Prompt for driver
+	printf "%s" "$MSG_CHOOSE_DRIVER" && read -r driver
+
+	# While an invalid driver is introduced, prompt for a new input
+	while ! (is_valid_driver "$driver"); do
+
+		# Case the input is a list index
+		if is_number "$driver"; then
+			driver=${drivers["$fs"]}
+
+		# Invalid driver message and prompt for a new input
+		else
+			printf "${RED}%s${NC} %s" "$MSG_INVALID_DRIVER" "$MSG_RETRY_DRIVER" && read -r driver
+		fi
+
+	done
+
+	# Export variable
+	export driver && clear
 }
 
 # Prompt for confirmation

@@ -23,3 +23,6 @@ install_systemd_boot
 
 # Install and enable Network Manager
 install "networkmanager" && systemctl enable NetworkManager
+
+# Install drivers
+install_drivers "$driver"

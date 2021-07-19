@@ -480,7 +480,7 @@ prompt_driver() {
 
 		# Case the input is a list index
 		if is_number "$driver"; then
-			driver=${drivers["$fs"]}
+			driver=${drivers["$driver"]}
 
 		# Invalid driver message and prompt for a new input
 		else

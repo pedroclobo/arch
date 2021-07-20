@@ -1,56 +1,79 @@
 #!/bin/bash
+# Main file
 
-# Source functions
-source ./library.sh
-source ./stdin.sh
+# File dependencies
+file_deps=("stdin.sh" "package.sh" "disk.sh" "system.sh")
 
-# Installation files
-UEFI_EXT4="https://raw.githubusercontent.com/pedroclobo/arch/main/src/installations/uefi_ext4/install.sh"
-UEFI_EXT4_CRYPT="https://raw.githubusercontent.com/pedroclobo/arch/main/src/installations/uefi_ext4_crypt/install.sh"
+# Chroot script link
+CHROOT="https://raw.githubusercontent.com/pedroclobo/arch/main/src/chroot.sh"
 
-# Execute installer script
-execute_installer() {
 
-	# Download the installer
-	wget -q "$1" -O "installer.sh"
+# Source script dependencies and install missing dependencies
+prepare_dependencies() {
 
-	# Make it executable and run it
-	chmod +x ./installer.sh && bash installer.sh
+	# Source dependency files
+	for file in "${file_deps[@]}"; do
+		source "$file"
+	done
+
+	# Install dependencies
+	! is_installed "wget" && install "wget"
 }
 
-# Initilize the installer based on the choosen filesystem
-initialize_installer() {
-
-	# Various installs
-	if is_uefi_system; then
-		if [ "$filesystem" = "ext4" ]; then
-			if [ "$crypt_passwd" = "" ]; then
-				execute_installer "$UEFI_EXT4"
-			else
-				execute_installer "$UEFI_EXT4_CRYPT"
-			fi
-		fi
-	fi
-}
 
 ###################
-### Instalation ###
+### Preparation ###
 ###################
 
-# Clear the screen
-clear
+# Get all dependencies
+prepare_dependencies
+
+
+##################
+### User Input ###
+##################
 
 # Get user input
-prompt_keymap
-prompt_country
-prompt_disk
-prompt_filesystem
-prompt_crypt_passwd
-prompt_hostname
-prompt_passwd
-prompt_timezone
-prompt_driver
-prompt_confirmation
+get_user_input
 
-# Initialize the installer
-initialize_installer
+
+########################
+### Pre-Installation ###
+########################
+
+# Set the keyboard layout
+set_keymap "$keymap"
+
+# Update the system clock
+update_clock
+
+# Partition the disks
+partition_disks
+
+# Format the partitions
+format_partitions
+
+# Mount the file systems
+mount_filesystems
+
+
+####################
+### Installation ###
+####################
+
+# Select the mirrors
+update_mirrors "$country"
+
+# Install essential packages
+install_essential
+
+
+############################
+### Configure the system ###
+############################
+
+# Fstab
+generate_fstab
+
+# Chroot
+change_root

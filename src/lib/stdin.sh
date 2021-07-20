@@ -1,9 +1,6 @@
 #!/bin/bash
 # User input related functions
 
-# Source functions
-source ./library.sh
-
 # String colors
 RED='\033[0;31m'
 NC='\033[0m'
@@ -516,4 +513,20 @@ prompt_confirmation() {
 			sleep 1
 		done
 	clear
+}
+
+# Get all user input
+get_user_input() {
+
+	# Get user input
+	prompt_keymap
+	prompt_country
+	prompt_disk
+	prompt_filesystem
+	prompt_crypt_passwd
+	prompt_hostname
+	prompt_passwd
+	prompt_timezone
+	prompt_driver
+	prompt_confirmation
 }

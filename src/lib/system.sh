@@ -1,115 +1,19 @@
 #!/bin/bash
-# File with all primative functions
+# File with all system information related functions
 
 # Check if the boot mode if UEFI
 is_uefi_system() {
 	[ -d "/sys/firmware/efi/efivars" ]
 }
 
-# Install a package through pacman
-install() {
-	pacman -S "$@" --noconfirm
-}
-
-# Refresh pacman mirrors
-refresh_mirrors() {
-	pacman -Syy
-}
-
-# Check if a package is installed
-is_installed() {
-	pacman -Qnq | grep -q -wx "$1"
-}
-
-# Sort pacman mirrors based on speed
-# and location and refresh them
-update_mirrors() {
-	reflector -c "$1" -a 6 --sort rate --save "/etc/pacman.d/mirrorlist"
-	refresh_mirrors
-}
-
 # Set keyboard layout
-set_keyboard_layout() {
+set_keymap() {
 	loadkeys "$1"
 }
 
 # Update the system clock
 update_clock() {
 	timedatectl set-ntp true
-}
-
-# Partition the disk with MBR for BIOS / Legacy boot
-partition_mbr() {
-	SIZE_1=$((1 + BOOT_SIZE))
-	SIZE_2=$((SIZE_1 + SWAP_SIZE))
-
-	parted --script -a optimal "$disk" \
-		mklabel msdos \
-		unit mib \
-		mkpart primary "$SIZE_1" "$SIZE_2" \
-		-- mkpart primary "$SIZE_2" -1 \
-
-	# Export disk variables
-	BOOT_PART="$disk""1" && export BOOT_PART
-	SWAP_PART="$disk""2" && export SWAP_PART
-	ROOT_PART="$disk""3" && export ROOT_PART
-}
-
-# Partition the disk with GPT for UEFI
-partition_gpt() {
-	SIZE_1=$((1 + BOOT_SIZE))
-
-	# Creating the boot, swap and root partition
-	parted --script -a optimal "$disk" \
-		mklabel gpt \
-		unit mib \
-		mkpart primary 1 "$SIZE_1" \
-		name 1 boot \
-		set 1 boot on \
-		-- mkpart primary "$SIZE_1" -1 \
-		name 2 rootfs
-
-	# Export disk variables
-	BOOT_PART="$disk""1" && export BOOT_PART
-	ROOT_PART="$disk""2" && export ROOT_PART
-}
-
-# Format the partition for UEFI with the ext4 filesystem
-format_gpt() {
-
-	# Non-encrypted
-	if [ "$crypt_passwd" = "" ]; then
-		yes | mkfs.vfat -F 32 "$BOOT_PART"
-		yes | mkfs.ext4 "$ROOT_PART"
-
-	# Encrypted
-	else
-		yes | mkfs.vfat -F 32 "$BOOT_PART"
-		encrypt_root
-		yes | mkfs.ext4 /dev/mapper/cryptroot
-	fi
-}
-
-# Mount the partitions
-mount_gpt() {
-
-	# Non-encrypted
-	if [ "$crypt_passwd" = "" ]; then
-		mount "$ROOT_PART" /mnt
-		mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
-		create_swapfile
-
-	# Encrypted
-	else
-		mount /dev/mapper/cryptroot /mnt
-		mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
-		create_swapfile
-	fi
-}
-
-# Install essencial packages
-install_essential() {
-	pacstrap /mnt base linux linux-firmware
 }
 
 # Generate the fstab
@@ -129,7 +33,7 @@ change_root() {
 }
 
 # Set the time zone
-set_time_zone() {
+set_timezone() {
 	ln -sf /usr/share/zoneinfo/"$1" /etc/localtime
 	hwclock --systohc
 }
@@ -146,7 +50,7 @@ set_lang_var() {
 }
 
 # Export keyboard layout variable
-set_keyboard_var() {
+set_keymap_var() {
 	echo "KEYMAP=${keymap}" >> /etc/vconsole.conf
 }
 
@@ -156,7 +60,7 @@ generate_locales() {
 		uncomment_locale "en_US.UTF-8"
 		uncomment_locale "pt_PT.UTF-8"
 		locale-gen && set_lang_var "en_US.UTF-8"
-		set_keyboard_var "$keymap"
+		set_keymap_var "$keymap"
 	fi
 }
 
@@ -245,18 +149,6 @@ encrypt_root() {
 	echo "$crypt_passwd" | cryptsetup open "$ROOT_PART" cryptroot
 }
 
-# Return the size of the given disk
-get_disk_size() {
-
-	# Variable with all disks and their sizes
-	disk_sizes=$(lsblk -l | awk '/disk/ {print "/dev/"$1, $4}')
-
-	# Get the size
-	size=$(echo "$disk_sizes" | grep "$1" | awk '{print $2}')
-
-	echo "$size"
-}
-
 # Return the size of the ram in MB
 get_ram_size() {
 	size=$(awk '/MemTotal/ {print $2}' "/proc/meminfo")
@@ -282,18 +174,3 @@ create_swapfile() {
 	swapon /mnt/swapfile
 }
 
-# Install video drivers
-install_drivers() {
-	if [ "$1" = "NVIDIA" ]; then
-		install "nvidia" "nvidia-utils" "nvidia-settings"
-
-	elif [ "$1" = "NVIDIA Optimus" ]; then
-		install "xf86-video-intel" "nvidia" "nvidia-utils" "nvidia-settings" "nvidia-prime"
-
-	elif [ "$1" = "AMD" ]; then
-		install "xf86-video-amdgpu"
-
-	elif [ "$1" = "Intel" ]; then
-		install "xf86-video-intel"
-	fi
-}

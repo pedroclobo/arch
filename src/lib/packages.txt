@@ -1,0 +1,51 @@
+# Fonts
+ttf-fira-code
+ttf-joypixels
+
+# Utilities
+android-sdk-platform-tools
+brave-bin
+nitrogen
+youtube-dl
+atomicparsley
+discord
+htop
+mpv
+nautilus
+neofetch
+obs-studio
+pulsemixer
+pavucontrol
+qbittorrent
+zoom
+qt5-webengine
+slack-desktop
+sxiv
+timeshift-bin
+unrar
+unzip
+vifm
+vlc
+zathura
+zathura-pdf-mupdf
+fzf
+zip
+wget
+light
+zsh-autosuggestions
+zsh-pure-prompt
+zsh-syntax-highlighting
+exa
+
+# Software Development
+indent
+jre-openjdk
+valgrind
+lua
+bash-language-server
+clang
+pyright
+
+# Window Manager
+maim
+redshift

@@ -36,6 +36,8 @@ zsh-autosuggestions
 zsh-pure-prompt
 zsh-syntax-highlighting
 exa
+alacritty
+neovim
 
 # Software Development
 indent

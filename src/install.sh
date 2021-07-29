@@ -1,12 +1,14 @@
 #!/bin/bash
-# Main file
+# Main install script
 
 # File dependencies
 file_deps=("stdin.sh" "package.sh" "disk.sh" "system.sh")
 
-# Chroot script link
-CHROOT="https://raw.githubusercontent.com/pedroclobo/arch/main/src/chroot.sh"
-
+export BOOT_SIZE=260
+export CHROOT="https://raw.githubusercontent.com/pedroclobo/arch/main/src/chroot.sh"
+export PACKAGE_LIST="https://raw.githubusercontent.com/pedroclobo/arch/main/src/lib/packages.txt"
+export AUR_HELPER="paru"
+export ESSENTIAL_PACKAGES="base linux linux-firmware base-devel"
 
 # Source script dependencies and install missing dependencies
 prepare_dependencies() {
@@ -17,7 +19,7 @@ prepare_dependencies() {
 	done
 
 	# Install dependencies
-	! is_installed "wget" && install "wget"
+	! is_installed "wget" && sync_mirrors && install_silently "wget"
 }
 
 
@@ -41,17 +43,17 @@ get_user_input
 ### Pre-Installation ###
 ########################
 
-# Set the keyboard layout
-set_keymap "$keymap"
+# Load the keyboard layout
+load_keymap "$keymap"
 
 # Update the system clock
 update_clock
 
 # Partition the disks
-partition_disks
+partition_disks "$disk"
 
 # Format the partitions
-format_partitions
+format_partitions "$crypt_passwd"
 
 # Mount the file systems
 mount_filesystems
@@ -65,7 +67,7 @@ mount_filesystems
 update_mirrors "$country"
 
 # Install essential packages
-install_essential
+install_essential "$ESSENTIAL_PACKAGES"
 
 
 ############################

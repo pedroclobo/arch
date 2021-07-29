@@ -1,116 +1,181 @@
 #!/bin/bash
-# File with all disk related functions
+# Disk functions
 
-# Boot partition size in MB
-BOOT_SIZE="260"
+################################################################################
+# Verify the disk in a SSD
+# Arguments:
+#     disk
+# Returns:
+#     boolean
+################################################################################
+is_ssd() {
+	prefix=$(echo "$1" | awk -F '/' '{print $3}')
+	cat /sys/block/"${prefix}"/queue/rotational > /dev/null
+}
 
-
-# Return the size of the given disk
+################################################################################
+# Get the size of the disk
+# Arguments:
+#     disk
+# Returns:
+#     size in GB
+################################################################################
 get_disk_size() {
-
-	# Variable with all disks and their sizes
 	disk_sizes=$(lsblk -l | awk '/disk/ {print "/dev/"$1, $4}')
 
-	# Get the size
 	size=$(echo "$disk_sizes" | grep "$1" | awk '{print $2}')
-
 	echo "$size"
 }
 
-# Partition the disk with MBR for BIOS / Legacy boot
+################################################################################
+# Partition the disks for MBR layouts
+# Arguments:
+#     disk
+# Globals:
+#     BOOT_SIZE
+################################################################################
 partition_mbr() {
-	SIZE_1=$((1 + BOOT_SIZE))
-	SIZE_2=$((SIZE_1 + SWAP_SIZE))
+	size_1=$((1 + BOOT_SIZE))
 
-	parted --script -a optimal "$disk" \
+	parted --script -a optimal "$1" \
 		mklabel msdos \
 		unit mib \
-		mkpart primary "$SIZE_1" "$SIZE_2" \
-		-- mkpart primary "$SIZE_2" -1 \
+		mkpart primary 1 "$size_1" \
+		-- mkpart primary "$size_1" -1 \
 
 	# Export disk variables
-	BOOT_PART="$disk""1" && export BOOT_PART
-	SWAP_PART="$disk""2" && export SWAP_PART
-	ROOT_PART="$disk""3" && export ROOT_PART
+	export BOOT_PART="$1""1"
+	export ROOT_PART="$1""2"
 }
 
-# Partition the disk with GPT for UEFI
+################################################################################
+# Partition the disks for GPT layouts
+# Arguments:
+#     disk
+# Globals:
+#     BOOT_SIZE
+################################################################################
 partition_gpt() {
-	SIZE_1=$((1 + BOOT_SIZE))
+	size_1=$((1 + BOOT_SIZE))
 
-	# Creating the boot, swap and root partition
-	parted --script -a optimal "$disk" \
+	parted --script -a optimal "$1" \
 		mklabel gpt \
 		unit mib \
-		mkpart primary 1 "$SIZE_1" \
+		mkpart primary 1 "$size_1" \
 		name 1 boot \
 		set 1 boot on \
-		-- mkpart primary "$SIZE_1" -1 \
-		name 2 rootfs
+		-- mkpart primary "$size_1" -1 \
+		name 2 root
 
-	# Export disk variables
-	BOOT_PART="$disk""1" && export BOOT_PART
-	ROOT_PART="$disk""2" && export ROOT_PART
+	export BOOT_PART="$1""1"
+	export ROOT_PART="$1""2"
 }
 
-# Partition the disk
+################################################################################
+# Partition the disks
+################################################################################
 partition_disks() {
-
-	if is_uefi_system; then
-		partition_gpt
-	else
-		partition_mbr
-	fi
+	is_uefi_system && partition_gpt "$disk" ||
+		partition_mbr "$disk"
 }
 
-# Format the partition for UEFI with the ext4 filesystem
+################################################################################
+# Format the partitions for GPT layout with the ext4 filesystem
+# Globals:
+#     BOOT_PART
+#     ROOT_PART
+################################################################################
 format_gpt() {
-
 	yes | mkfs.vfat -F 32 "$BOOT_PART"
 	yes | mkfs.ext4 "$ROOT_PART"
 }
 
-# Format the partition for UEFI with the ext4 filesystem
+################################################################################
+# Format and encrypt the partitions for GPT layout with the ext4 filesystem
+# Arguments:
+#     encryption password
+# Globals:
+#     BOOT_PART
+################################################################################
 format_gpt_crypt() {
-
 	yes | mkfs.vfat -F 32 "$BOOT_PART"
-	encrypt_root
+	encrypt_root "$1"
 	yes | mkfs.ext4 /dev/mapper/cryptroot
 }
 
+################################################################################
+# Create a swapfile and activate it
+################################################################################
+create_swapfile() {
+
+	# Swap is twice the size of the RAM
+	size=$(( 2 * "$(get_ram_size)" ))
+
+	dd if=/dev/zero of=/mnt/swapfile bs=1M count=${size} status=progress
+	chmod 600 /mnt/swapfile
+	mkswap /mnt/swapfile
+	swapon /mnt/swapfile
+}
+
+################################################################################
+# Format the partitions
+# Arguments:
+#     crypt_passwd
+################################################################################
 # Format the partitions
 format_partitions() {
-
 	if is_uefi_system; then
-		if [ "$crypt_passwd"  = "" ]; then
+		if [ "$1"  = "" ]; then
 			format_gpt
 		else
-			format_gpt_crypt
+			format_gpt_crypt "$1"
 		fi
 #	else
 #		partition_mbr
 	fi
 }
 
-# Mount the partitions
-mount_gpt() {
+################################################################################
+# Encrypt the root partition
+# Arguments:
+#     encryption password
+# Globals:
+#     ROOT_PART
+################################################################################
+encrypt_root() {
+	echo "$1" | cryptsetup -q luksFormat "$ROOT_PART"
+	echo "$1" | cryptsetup open "$ROOT_PART" cryptroot
+}
 
+################################################################################
+# Mount the filesystems for GPT layout with ext4 root partition
+# Globals:
+#     BOOT_PART
+#     ROOT_PART
+################################################################################
+mount_gpt() {
 	mount "$ROOT_PART" /mnt
 	mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
 	create_swapfile
 }
 
-# Mount the partitions
+################################################################################
+# Mount the filesystems for GPT layout with ext4 root partition and encryption
+# Globals:
+#     BOOT_PART
+################################################################################
 mount_gpt_crypt() {
-
 	mount /dev/mapper/cryptroot /mnt
 	mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
 	create_swapfile
 }
 
-# Mount the file systems
+################################################################################
+# Mount the filesystems
+# Globals:
+#     crypt_passwd
+################################################################################
 mount_filesystems() {
-
 	if is_uefi_system; then
 		if [ "$crypt_passwd"  = "" ]; then
 			mount_gpt
@@ -121,4 +186,3 @@ mount_filesystems() {
 #		partition_mbr
 	fi
 }
-

@@ -4,7 +4,6 @@
 # File dependencies
 file_deps=("stdin.sh" "package.sh" "disk.sh" "system.sh")
 
-
 # Source script dependencies and install missing dependencies
 prepare_dependencies() {
 
@@ -31,20 +30,52 @@ prepare_dependencies
 set_timezone "$timezone"
 
 # Localization
-generate_locales
+generate_locales "$country" "$keymap"
 
 # Network configuration
-set_hostname && set_hosts
+set_hostname "$hostname" && add_hosts "$hostname"
 
 # Root password
 set_password "root" "$passwd"
 
 # Bootloader
-install "intel-ucode"
-install_systemd_boot
+install_microcode
+install_systemd_boot "$crypt_passwd"
 
-# Install and enable Network Manager
-install "networkmanager" && systemctl enable NetworkManager
 
-# Install drivers
-install_drivers "$driver"
+#############################
+### System administration ###
+#############################
+
+# User and groups and Privilege elevation
+add_user "$user" "$passwd" "bash"
+sudoers_uncomment "%wheel ALL=(ALL) ALL"
+sudoers_uncomment "%wheel ALL=(ALL) NOPASSWD: ALL"
+
+# Package management
+install_aur_helper "$user"
+
+
+################################
+### Graphical user interface ###
+################################
+
+# Display server
+install_display_server "Xorg"
+
+# Display drivers
+install_drivers "$driver" "$user"
+
+# Desktop environments / Window managers
+install_desktop "$desktop" "$user"
+
+
+#####################
+### Miscellaneous ###
+#####################
+
+# Apply tweaks
+apply_tweaks "dash" "$disk" "$country"
+
+# Finish installation
+sudoers_comment "%wheel ALL=(ALL) NOPASSWD: ALL"

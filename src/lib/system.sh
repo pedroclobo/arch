@@ -421,6 +421,7 @@ install_dwm() {
 install_gnome() {
 	install "gnome"
 	systemctl enable gdm
+	sed -i "s/#WaylandEnable=false/WaylandEnable=false/g" /etc/gdm/custom.conf
 }
 
 ################################################################################

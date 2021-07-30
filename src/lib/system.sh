@@ -377,7 +377,7 @@ install_drivers() {
 # Install the Xorg display server
 ################################################################################
 install_xorg() {
-	install "xorg" "xorg-xinit"
+	install "xorg-server" "xorg-xinit" "xorg-xrandr" "xorg-xsetroot"
 }
 
 ################################################################################

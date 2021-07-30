@@ -38,10 +38,11 @@ zsh-syntax-highlighting
 exa
 alacritty
 neovim
+xclip
 
 # Software Development
 indent
-jre-openjdk
+jdk
 valgrind
 lua
 bash-language-server

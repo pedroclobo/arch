@@ -1,5 +1,8 @@
 # Fonts
+noto-fonts
+ttf-dejavu
 ttf-fira-code
+ttf-liberation
 ttf-joypixels
 
 # Utilities

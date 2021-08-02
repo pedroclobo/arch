@@ -3,51 +3,48 @@ ttf-fira-code
 ttf-joypixels
 
 # Utilities
+alacritty
 android-sdk-platform-tools
-brave-bin
-nitrogen
-youtube-dl
 atomicparsley
+brave-bin
 discord
+exa
+fzf
 htop
+light
+man
 mpv
 nautilus
 neofetch
+neovim
+nitrogen
 obs-studio
-pulsemixer
 pavucontrol
+pulsemixer
 qbittorrent
-zoom
 qt5-webengine
 slack-desktop
 sxiv
-timeshift-bin
+timeshift
 unrar
 unzip
-vifm
 vlc
+wget
+xclip
+youtube-dl
 zathura
 zathura-pdf-mupdf
-fzf
 zip
-wget
-light
+zoom
 zsh-autosuggestions
 zsh-pure-prompt
 zsh-syntax-highlighting
-exa
-alacritty
-neovim
-xclip
 
 # Software Development
 indent
-jdk
-valgrind
+jdk-openjdk
 lua
-bash-language-server
-clang
-pyright
+valgrind
 
 # Window Manager
 maim

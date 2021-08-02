@@ -56,7 +56,7 @@ partition_disks "$disk"
 format_partitions "$crypt_passwd"
 
 # Mount the file systems
-mount_filesystems
+mount_filesystems "$crypt_passwd"
 
 
 ####################

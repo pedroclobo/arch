@@ -268,9 +268,9 @@ change_default_entry() {
 }
 
 ################################################################################
-# Install systemdboot
+# Install systemdboot for non-encrypted and encrypted systems
 # Arguments:
-#     encryption password
+#     crypt_passwd
 ################################################################################
 install_systemd_boot() {
 
@@ -284,6 +284,51 @@ install_systemd_boot() {
 		"") return ;;
 		*) change_hooks "base systemd autodetect keyboard sd-vconsole modconf block sd-encrypt filesystems fsck" ;;
 	esac
+}
+
+################################################################################
+# Modify the grub config
+# Globals:
+#     ROOT_PART
+################################################################################
+modify_grub_cfg() {
+	sed -i "s|^GRUB_CMDLINE_LINUX=.*|GRUB_CMDLINE_LINUX=\"cryptdevice=${ROOT_PART}:cryptroot\"|" /etc/default/grub
+}
+
+################################################################################
+# Install GRUB bootloader for non-encrypted and encrypted systems
+# Globals:
+#     ROOT_PART
+# Arguments:
+#     disk
+#     encryption password
+################################################################################
+install_grub() {
+
+	install "grub"
+
+	case "$2" in
+		"") return ;;
+		*) modify_grub_cfg
+			change_hooks "base udev autodetect modconf block encrypt filesystems keyboard fsck" ;;
+	esac
+
+	grub-install --target=i386-pc "$disk"
+	grub-mkconfig -o /boot/grub/grub.cfg
+}
+
+################################################################################
+# Install the bootloader
+# Arguments:
+#     disk
+#     encryption password
+################################################################################
+install_bootloader() {
+	if is_uefi_system; then
+		install_systemd_boot "$2"
+	else
+		install_grub "$1" "$2"
+	fi
 }
 
 ################################################################################

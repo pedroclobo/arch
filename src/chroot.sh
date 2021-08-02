@@ -40,7 +40,7 @@ set_password "root" "$passwd"
 
 # Bootloader
 install_microcode
-install_systemd_boot "$crypt_passwd"
+install_bootloader "$disk" "$crypt_passwd"
 
 
 #############################

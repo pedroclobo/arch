@@ -31,8 +31,6 @@ get_disk_size() {
 # Partition the disks for MBR layouts
 # Arguments:
 #     disk
-# Globals:
-#     BOOT_SIZE
 ################################################################################
 partition_mbr() {
 	size_1=$((1 + BOOT_SIZE))
@@ -41,9 +39,8 @@ partition_mbr() {
 		mklabel msdos \
 		unit mib \
 		mkpart primary 1 "$size_1" \
-		-- mkpart primary "$size_1" -1 \
+		-- mkpart primary "$size_1" -1
 
-	# Export disk variables
 	export BOOT_PART="$1""1"
 	export ROOT_PART="$1""2"
 }
@@ -75,8 +72,35 @@ partition_gpt() {
 # Partition the disks
 ################################################################################
 partition_disks() {
-	is_uefi_system && partition_gpt "$disk" ||
+	if is_uefi_system; then
+		partition_gpt "$disk"
+	else
 		partition_mbr "$disk"
+	fi
+}
+
+################################################################################
+# Format the partitions for MBR layout with the ext4 filesystem
+# Globals:
+#     BOOT_PART
+#     ROOT_PART
+################################################################################
+format_mbr() {
+	yes | mkfs.ext4 "$BOOT_PART"
+	yes | mkfs.ext4 "$ROOT_PART"
+}
+
+################################################################################
+# Format and encrypt the partitions for MBR layout with the ext4 filesystem
+# Globals:
+#     BOOT_PART
+# Arguments:
+#     encryption password
+################################################################################
+format_mbr_crypt() {
+	yes | mkfs.ext4 "$BOOT_PART"
+	encrypt_root "$1"
+	yes | mkfs.ext4 /dev/mapper/cryptroot
 }
 
 ################################################################################
@@ -120,18 +144,21 @@ create_swapfile() {
 ################################################################################
 # Format the partitions
 # Arguments:
-#     crypt_passwd
+#     encryption password
 ################################################################################
-# Format the partitions
 format_partitions() {
 	if is_uefi_system; then
-		if [ "$1"  = "" ]; then
+		if [[ "$1" == "" ]]; then
 			format_gpt
 		else
 			format_gpt_crypt "$1"
 		fi
-#	else
-#		partition_mbr
+	else
+		if [[ "$1" == "" ]]; then
+			format_mbr
+		else
+			format_mbr_crypt "$1"
+		fi
 	fi
 }
 
@@ -145,6 +172,29 @@ format_partitions() {
 encrypt_root() {
 	echo "$1" | cryptsetup -q luksFormat "$ROOT_PART"
 	echo "$1" | cryptsetup open "$ROOT_PART" cryptroot
+}
+
+################################################################################
+# Mount the filesystems for MBR layout with ext4 root partition
+# Globals:
+#     BOOT_PART
+#     ROOT_PART
+################################################################################
+mount_mbr() {
+	mount "$ROOT_PART" /mnt
+	mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
+	create_swapfile
+}
+
+################################################################################
+# Mount the filesystems for MBR layout with ext4 root partition and encryption
+# Globals:
+#     BOOT_PART
+################################################################################
+mount_mbr_crypt() {
+	mount /dev/mapper/cryptroot /mnt
+	mkdir -p /mnt/boot && mount "$BOOT_PART" /mnt/boot
+	create_swapfile
 }
 
 ################################################################################
@@ -172,17 +222,21 @@ mount_gpt_crypt() {
 
 ################################################################################
 # Mount the filesystems
-# Globals:
-#     crypt_passwd
+# Arguments:
+#     encryption password
 ################################################################################
 mount_filesystems() {
 	if is_uefi_system; then
-		if [ "$crypt_passwd"  = "" ]; then
+		if [[ "$1" == "" ]]; then
 			mount_gpt
 		else
 			mount_gpt_crypt
 		fi
-#	else
-#		partition_mbr
+	else
+		if [[ "$1" == "" ]]; then
+			mount_mbr
+		else
+			mount_mbr_crypt
+		fi
 	fi
 }

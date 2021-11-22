@@ -2,16 +2,16 @@
 noto-fonts
 ttf-dejavu
 ttf-fira-code
-ttf-liberation
 ttf-joypixels
+ttf-liberation
 
 # Utilities
 alacritty
 android-sdk-platform-tools
 atomicparsley
-brave-bin
 discord
 exa
+firefox
 fzf
 htop
 light
@@ -21,26 +21,18 @@ nautilus
 neofetch
 neovim
 nitrogen
-obs-studio
-pavucontrol
 pulsemixer
-qbittorrent
-qt5-webengine
-slack-desktop
+rsync
 sxiv
-timeshift
 unrar
 unzip
-vlc
 wget
 xclip
 youtube-dl
 zathura
 zathura-pdf-mupdf
 zip
-zoom
 zsh-autosuggestions
-zsh-pure-prompt
 zsh-syntax-highlighting
 
 # Software Development

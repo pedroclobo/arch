@@ -8,7 +8,7 @@ export BOOT_SIZE=260
 export CHROOT="https://raw.githubusercontent.com/pedroclobo/arch/main/src/chroot.sh"
 export PACKAGE_LIST="https://raw.githubusercontent.com/pedroclobo/arch/main/src/lib/packages.txt"
 export AUR_HELPER="paru"
-export ESSENTIAL_PACKAGES="base linux linux-firmware base-devel"
+export ESSENTIAL_PACKAGES="base linux linux-headers linux-firmware base-devel"
 
 # Source script dependencies and install missing dependencies
 prepare_dependencies() {

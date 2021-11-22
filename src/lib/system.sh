@@ -422,7 +422,7 @@ install_drivers() {
 # Install the Xorg display server
 ################################################################################
 install_xorg() {
-	install "xorg-server" "xorg-xinit" "xorg-xrandr" "xorg-xsetroot"
+	install "xorg" "xorg-xinit"
 }
 
 ################################################################################
@@ -437,27 +437,35 @@ install_display_server() {
 }
 
 ################################################################################
-# Install the dwm window manager
+# Install the dwm window manager and deploys all related dotfiles
 # Arguments:
 #     user
 ################################################################################
 install_dwm() {
-	pushd /home/pedro
-	sudo -u "$1" mkdir .config && pushd .config
+	install "stow" "git"
+	pushd /home/"$1"
 
-	# Dmenu
-	sudo -u "$1" git clone https://github.com/pedroclobo/dmenu.git
-	make -C dmenu clean install
+	sudo -u "$1" git clone --recurse-submodules https://github.com/pedroclobo/dotfiles.git repos/dotfiles
+	pushd repos/dotfiles
+	ls -d */ | xargs stow -t /home/"$1"
+	popd
 
-	# Dwmblocks
-	sudo -u "$1" git clone https://github.com/pedroclobo/dwmblocks.git
-	make -C dwmblocks clean install
+	pushd .config/dwm
+	make clean install
+	popd
 
-	# Dwm
-	sudo -u "$1" git clone https://github.com/pedroclobo/dwm.git
-	make -C dwm clean install
+	pushd .config/dwmblocks
+	make clean install
+	popd
 
-	pushd; pushd
+	pushd .config/dmenu
+	make clean install
+	popd
+
+	popd
+
+	change_user_sh "$1" "zsh"
+	sudoers_uncomment "%wheel ALL=(ALL) NOPASSWD: ALL"
 }
 
 ################################################################################
@@ -481,28 +489,10 @@ install_desktop() {
 	case "$1" in
 		"dwm")
 			install_dwm "$2"
-			setup_dotfiles "$2"
 			install_package_list "$2" "$PACKAGE_LIST" ;;
 		"Gnome")
 			install_gnome ;;
 	esac
-}
-
-################################################################################
-# Setup my personal dotfiles
-# Arguments:
-#     user
-################################################################################
-setup_dotfiles() {
-	sudo -u "$1" git clone "https://github.com/pedroclobo/dotfiles.git" /home/"$1"/Projects/dotfiles
-	pushd /home/"$1"/Projects/dotfiles
-	sudo -u "$1" sh setup.sh
-
-	change_user_sh "$1" "zsh"
-	sudoers_uncomment "%wheel ALL=(ALL) NOPASSWD: ALL"
-
-	sudo -u "$1" git clone "https://github.com/pedroclobo/neovim.git" /home/"$1"/.config/nvim
-	popd
 }
 
 ################################################################################

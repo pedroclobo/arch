@@ -1,17 +1,17 @@
 # Fonts
+nerd-fonts-ubuntu-mono
 noto-fonts
 ttf-dejavu
 ttf-fira-code
-ttf-joypixels
 ttf-liberation
 
 # Utilities
 alacritty
 android-sdk-platform-tools
 atomicparsley
+brave-bin
 discord
 exa
-firefox
 fzf
 htop
 light

@@ -2,11 +2,11 @@
 # Disk functions
 
 ################################################################################
-# Verify the disk in a SSD
+# Verify the disk is a SSD
 # Arguments:
 #     disk
 # Returns:
-#     boolean
+#     0 if the disk in a ssd; 1, otherwise
 ################################################################################
 is_ssd() {
 	prefix=$(echo "$1" | awk -F '/' '{print $3}')
@@ -14,7 +14,7 @@ is_ssd() {
 }
 
 ################################################################################
-# Get the size of the disk
+# Get the disk's size
 # Arguments:
 #     disk
 # Returns:
@@ -28,12 +28,23 @@ get_disk_size() {
 }
 
 ################################################################################
+# Partition the disks
+################################################################################
+partition_disks() {
+	if is_uefi_system; then
+		partition_gpt "$disk"
+	else
+		partition_mbr "$disk"
+	fi
+}
+
+################################################################################
 # Partition the disks for MBR layouts
 # Arguments:
 #     disk
 ################################################################################
 partition_mbr() {
-	size_1=$((1 + BOOT_SIZE))
+	size_1=$((1 + 256))
 
 	parted --script -a optimal "$1" \
 		mklabel msdos \
@@ -49,11 +60,9 @@ partition_mbr() {
 # Partition the disks for GPT layouts
 # Arguments:
 #     disk
-# Globals:
-#     BOOT_SIZE
 ################################################################################
 partition_gpt() {
-	size_1=$((1 + BOOT_SIZE))
+	size_1=$((1 + 256))
 
 	parted --script -a optimal "$1" \
 		mklabel gpt \
@@ -69,13 +78,23 @@ partition_gpt() {
 }
 
 ################################################################################
-# Partition the disks
+# Format the partitions
+# Arguments:
+#     encryption password
 ################################################################################
-partition_disks() {
+format_partitions() {
 	if is_uefi_system; then
-		partition_gpt "$disk"
+		if [[ "$1" == "" ]]; then
+			format_gpt
+		else
+			format_gpt_crypt "$1"
+		fi
 	else
-		partition_mbr "$disk"
+		if [[ "$1" == "" ]]; then
+			format_mbr
+		else
+			format_mbr_crypt "$1"
+		fi
 	fi
 }
 
@@ -116,10 +135,10 @@ format_gpt() {
 
 ################################################################################
 # Format and encrypt the partitions for GPT layout with the ext4 filesystem
-# Arguments:
-#     encryption password
 # Globals:
 #     BOOT_PART
+# Arguments:
+#     encryption password
 ################################################################################
 format_gpt_crypt() {
 	yes | mkfs.vfat -F 32 "$BOOT_PART"
@@ -128,50 +147,24 @@ format_gpt_crypt() {
 }
 
 ################################################################################
-# Create a swapfile and activate it
-################################################################################
-create_swapfile() {
-
-	# Swap is twice the size of the RAM
-	size=$(( 2 * "$(get_ram_size)" ))
-
-	dd if=/dev/zero of=/mnt/swapfile bs=1M count=${size} status=progress
-	chmod 600 /mnt/swapfile
-	mkswap /mnt/swapfile
-	swapon /mnt/swapfile
-}
-
-################################################################################
-# Format the partitions
+# Mount the filesystems
 # Arguments:
 #     encryption password
 ################################################################################
-format_partitions() {
+mount_filesystems() {
 	if is_uefi_system; then
 		if [[ "$1" == "" ]]; then
-			format_gpt
+			mount_gpt
 		else
-			format_gpt_crypt "$1"
+			mount_gpt_crypt
 		fi
 	else
 		if [[ "$1" == "" ]]; then
-			format_mbr
+			mount_mbr
 		else
-			format_mbr_crypt "$1"
+			mount_mbr_crypt
 		fi
 	fi
-}
-
-################################################################################
-# Encrypt the root partition
-# Arguments:
-#     encryption password
-# Globals:
-#     ROOT_PART
-################################################################################
-encrypt_root() {
-	echo "$1" | cryptsetup -q luksFormat "$ROOT_PART"
-	echo "$1" | cryptsetup open "$ROOT_PART" cryptroot
 }
 
 ################################################################################
@@ -187,7 +180,7 @@ mount_mbr() {
 }
 
 ################################################################################
-# Mount the filesystems for MBR layout with ext4 root partition and encryption
+# Mount the filesystems for MBR layout with encrypted ext4 root partition
 # Globals:
 #     BOOT_PART
 ################################################################################
@@ -210,7 +203,7 @@ mount_gpt() {
 }
 
 ################################################################################
-# Mount the filesystems for GPT layout with ext4 root partition and encryption
+# Mount the filesystems for GPT layout with encrypted ext4 root partition
 # Globals:
 #     BOOT_PART
 ################################################################################
@@ -221,22 +214,27 @@ mount_gpt_crypt() {
 }
 
 ################################################################################
-# Mount the filesystems
+# Create a swapfile and activate it
+################################################################################
+create_swapfile() {
+
+	# Swap is twice the size of the RAM
+	size=$(( 2 * "$(get_ram_size)" ))
+
+	dd if=/dev/zero of=/mnt/swapfile bs=1M count=${size} status=progress
+	chmod 600 /mnt/swapfile
+	mkswap /mnt/swapfile
+	swapon /mnt/swapfile
+}
+
+################################################################################
+# Encrypt the root partition
+# Globals:
+#     ROOT_PART
 # Arguments:
 #     encryption password
 ################################################################################
-mount_filesystems() {
-	if is_uefi_system; then
-		if [[ "$1" == "" ]]; then
-			mount_gpt
-		else
-			mount_gpt_crypt
-		fi
-	else
-		if [[ "$1" == "" ]]; then
-			mount_mbr
-		else
-			mount_mbr_crypt
-		fi
-	fi
+encrypt_root() {
+	echo "$1" | cryptsetup -q luksFormat "$ROOT_PART"
+	echo "$1" | cryptsetup open "$ROOT_PART" cryptroot
 }

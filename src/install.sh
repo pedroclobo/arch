@@ -1,25 +1,16 @@
 #!/bin/bash
 # Main install script
 
-# File dependencies
-file_deps=("stdin.sh" "package.sh" "disk.sh" "system.sh")
-
-export BOOT_SIZE=260
-export CHROOT="https://raw.githubusercontent.com/pedroclobo/arch/main/src/chroot.sh"
-export PACKAGE_LIST="https://raw.githubusercontent.com/pedroclobo/arch/main/src/lib/packages.txt"
-export AUR_HELPER="paru"
-export ESSENTIAL_PACKAGES="base linux linux-headers linux-firmware base-devel"
-
-# Source script dependencies and install missing dependencies
+# Source files and install missing dependencies
 prepare_dependencies() {
 
-	# Source dependency files
-	for file in "${file_deps[@]}"; do
+	# Source files
+	for file in "stdin.sh" "package.sh" "disk.sh" "system.sh"; do
 		source "$file"
 	done
 
 	# Install dependencies
-	! is_installed "wget" && sync_mirrors && install_silently "wget"
+	sync_mirrors && install_silently "wget"
 }
 
 
@@ -27,13 +18,8 @@ prepare_dependencies() {
 ### Preparation ###
 ###################
 
-# Get all dependencies
+# Prepare dependencies
 prepare_dependencies
-
-
-##################
-### User Input ###
-##################
 
 # Get user input
 get_user_input
@@ -43,7 +29,7 @@ get_user_input
 ### Pre-Installation ###
 ########################
 
-# Load the keyboard layout
+# Set the console keyboard layout
 load_keymap "$keymap"
 
 # Update the system clock
@@ -64,10 +50,10 @@ mount_filesystems "$crypt_passwd"
 ####################
 
 # Select the mirrors
-update_mirrors "$country"
+sort_mirrors "$country"
 
 # Install essential packages
-install_essential "$ESSENTIAL_PACKAGES"
+install_essential "base linux linux-headers linux-firmware base-devel"
 
 
 ############################
@@ -78,4 +64,4 @@ install_essential "$ESSENTIAL_PACKAGES"
 generate_fstab
 
 # Chroot
-change_root
+change_root "https://raw.githubusercontent.com/pedroclobo/arch/main/src/chroot.sh"

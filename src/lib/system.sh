@@ -46,7 +46,7 @@ load_keymap() {
 ################################################################################
 # Set the KEYMAP variable
 # Arguments:
-#     KEYMAP
+#     keymap
 ################################################################################
 set_keymap() {
 	echo "KEYMAP=${1}" >> /etc/vconsole.conf
@@ -81,7 +81,7 @@ uncomment_locale() {
 ################################################################################
 # Set LANG variable
 # Arguments:
-#     LANG
+#     language
 ################################################################################
 set_lang() {
 	echo "LANG=${1}" > /etc/locale.conf
@@ -134,11 +134,11 @@ generate_fstab() {
 
 ################################################################################
 # Change root into installation and run the new script, deleting files after
-# Globals:
-#     CHROOT
+# Arguments:
+#     raw chroot script link
 ################################################################################
 change_root() {
-	curl "$CHROOT" > /mnt/chroot.sh
+	curl "$1" > /mnt/chroot.sh
 	mv ./* /mnt
 	arch-chroot /mnt bash chroot.sh
 
@@ -170,7 +170,7 @@ sudoers_comment() {
 #     shell name
 ################################################################################
 set_shell() {
-	! is_installed "$1" && install "$1"
+	install "$1"
 	ln -sfT "$1" /usr/bin/sh
 }
 
@@ -184,10 +184,22 @@ change_system_swapiness() {
 }
 
 ################################################################################
-# Enable TRIM for SSD's
+# Enable periodic TRIM for SSD's
 ################################################################################
 enable_trim() {
 	systemctl enable fstrim.timer
+}
+
+################################################################################
+# Install CPU microcode
+################################################################################
+install_microcode() {
+	brand=$(get_cpu_brand)
+
+	case "$brand" in
+		"Intel") install_microcode_intel ;;
+		"AMD") install_microcode_amd ;;
+	esac
 }
 
 ################################################################################
@@ -205,22 +217,21 @@ install_microcode_amd() {
 }
 
 ################################################################################
-# Install CPU microcode
-################################################################################
-install_microcode() {
-	brand=$(get_cpu_brand)
-
-	case "$brand" in
-		"Intel") install_microcode_intel;;
-		"AMD") install_microcode_amd;;
-	esac
-}
-
-################################################################################
 # Create initramfs
 ################################################################################
 create_initramfs() {
 	mkinitcpio -P
+}
+
+################################################################################
+# Replace mkinitcpio hook
+# Arguments:
+#     hook to replace
+#     replacement hook
+################################################################################
+replace_hook() {
+	sed -i "s/${1}/${2}/g" /etc/mkinitcpio.conf
+	create_initramfs
 }
 
 ################################################################################
@@ -231,6 +242,20 @@ create_initramfs() {
 change_hooks() {
 	sed -i "s/^HOOKS=.*/HOOKS=(${1})/g" /etc/mkinitcpio.conf
 	create_initramfs
+}
+
+################################################################################
+# Install the bootloader
+# Arguments:
+#     disk
+#     encryption password
+################################################################################
+install_bootloader() {
+	if is_uefi_system; then
+		install_systemd_boot "$2"
+	else
+		install_grub "$1" "$2"
+	fi
 }
 
 ################################################################################
@@ -281,13 +306,12 @@ install_systemd_boot() {
 
 	# Change hooks if encryption is choosen
 	case "$1" in
-		"") return ;;
 		*) change_hooks "base systemd autodetect keyboard sd-vconsole modconf block sd-encrypt filesystems fsck" ;;
 	esac
 }
 
 ################################################################################
-# Modify the grub config
+# Modify the grub configuration
 # Globals:
 #     ROOT_PART
 ################################################################################
@@ -308,9 +332,8 @@ install_grub() {
 	install "grub"
 
 	case "$2" in
-		"") return ;;
 		*) modify_grub_cfg
-			change_hooks "base udev autodetect modconf block encrypt filesystems keyboard fsck" ;;
+		   change_hooks "base udev autodetect modconf block encrypt filesystems keyboard fsck" ;;
 	esac
 
 	grub-install --target=i386-pc "$disk"
@@ -318,17 +341,25 @@ install_grub() {
 }
 
 ################################################################################
-# Install the bootloader
+# Setup silent boot
 # Arguments:
-#     disk
-#     encryption password
+#     user
 ################################################################################
-install_bootloader() {
-	if is_uefi_system; then
-		install_systemd_boot "$2"
-	else
-		install_grub "$1" "$2"
-	fi
+silent_boot() {
+
+	# Remove last login message
+	pushd /home/"$1"
+	sudo -u "$1" touch .hushlogin
+	popd
+
+	# Enable auto-login
+	mkdir -p /etc/systemd/system/getty@tty1.service.d
+cat <<EOF > /etc/systemd/system/getty@tty1.service.d/skip-prompt.conf
+[Service]
+ExecStart=
+ExecStart=-/usr/bin/agetty --skip-login --nonewline --noissue --autologin $1 --noclear %I \$TERM
+EOF
+
 }
 
 ################################################################################
@@ -339,7 +370,7 @@ install_bootloader() {
 #     shell
 ################################################################################
 add_user() {
-	! is_installed "$3" && install "$3"
+	install "$3"
 	useradd -m -G "wheel,audio,video,optical,storage" -s "/bin/${3}" "$1"
 	set_password "$1" "$2"
 }
@@ -437,35 +468,63 @@ install_display_server() {
 }
 
 ################################################################################
+# Install the desktop environment / window manager
+# Arguments:
+#     desktop environment / window manager
+#     user
+#     package list
+################################################################################
+install_desktop() {
+	case "$1" in
+		"dwm (laptop)")
+			install_dwm "$2" "laptop"
+			install_package_list "$2" "$3" ;;
+		"dwm (desktop)")
+			install_dwm "$2" "desktop"
+			install_package_list "$2" "$3" ;;
+		"Gnome")
+			install_gnome ;;
+	esac
+}
+
+################################################################################
 # Install the dwm window manager and deploys all related dotfiles
 # Arguments:
 #     user
+#     type of install
 ################################################################################
 install_dwm() {
-	install "stow" "git"
-	pushd /home/"$1"
 
-	sudo -u "$1" git clone --recurse-submodules https://github.com/pedroclobo/dotfiles.git repos/dotfiles
+	# Install dependencies
+	install "stow" "git" "zsh"
+
+	# Clone dotfiles repository
+	pushd /home/"$1"
+	sudo -u "$1" git clone --branch "$2" --recurse-submodules https://github.com/pedroclobo/dotfiles.git repos/dotfiles
+
+	# Stow all dotfiles
 	pushd repos/dotfiles
 	ls -d */ | xargs stow -t /home/"$1"
-	popd
 
-	pushd .config/dwm
-	make clean install
-	popd
-
-	pushd .config/dwmblocks
-	make clean install
-	popd
-
-	pushd .config/dmenu
-	make clean install
-	popd
+	# Compile suckless programs
+	for program in $(ls suckless/.config); do
+		pushd suckless/.config/"$program"
+		make clean install
+		popd
+	done
 
 	popd
+	popd
 
+	# Change user default shell
 	change_user_sh "$1" "zsh"
+
+	# Users can execute sudo commands without being prompted for a password
 	sudoers_uncomment "%wheel ALL=(ALL) NOPASSWD: ALL"
+
+	# Setup silent boot
+	silent_boot "$1"
+
 }
 
 ################################################################################
@@ -478,46 +537,31 @@ install_gnome() {
 }
 
 ################################################################################
-# Install the desktop environment / window manager
-# Globals:
-#     PACKAGE_LIST
+# Finish installation
 # Arguments:
-#     desktop environment / window manager
-#     user
+#     desktop
 ################################################################################
-install_desktop() {
+finalize() {
 	case "$1" in
-		"dwm")
-			install_dwm "$2"
-			install_package_list "$2" "$PACKAGE_LIST" ;;
+		"dwm (laptop)"|"dwm (desktop)")
+			finalize_dwm ;;
 		"Gnome")
-			install_gnome ;;
+			finalize_gnome ;;
 	esac
 }
 
 ################################################################################
-# Apply various system tweaks
-# Arguments:
-#     sh shell
-#     disk
-#     country
+# Finish installation for the dwm desktop
 ################################################################################
-apply_tweaks() {
+finalize_dwm() {
+	true
+}
 
-	# Install Network Manager
-	install "networkmanager"
-	systemctl enable NetworkManager
+################################################################################
+# Finish installation for the GNOME desktop
+################################################################################
+finalize_gnome() {
 
-	# Enable trim if main drive is SSD
-	is_ssd "$2" && enable_trim
-
-	# Set up pacman configuration
-	pacman_configuration
-
-	# Sort mirrors
-	! is_installed "reflector" && install "reflector"
-	update_mirrors "$3"
-
-	# Set /bin/sh shell
-	set_shell "$1"
+	# Users must enter their password to run sudo commands
+	sudoers_comment "%wheel ALL=(ALL) NOPASSWD: ALL"
 }

@@ -31,10 +31,10 @@ MSG_INVALID_TIMEZONE="Invalid timezone."
 MSG_RETRY_TIMEZONE="Please enter a valid timezone: "
 MSG_SEARCH_TIMEZONE="Search for timezone: "
 MSG_CHOOSE_DRIVER="Choose a video driver to install (by number or full name): "
-MSG_INVALID_DRIVER="You have choosen an invalid video driver."
+MSG_INVALID_DRIVER="You have chosen an invalid video driver."
 MSG_RETRY_DRIVER="Please enter a valid video driver: "
 MSG_CHOOSE_DESKTOP="Choose a desktop environment to install (by number or full name): "
-MSG_INVALID_DESKTOP="You have choosen an invalid desktop environment."
+MSG_INVALID_DESKTOP="You have chosen an invalid desktop environment."
 MSG_RETRY_DESKTOP="Please enter a valid desktop environment: "
 MSG_REVIEW_CONFIGURATION="Please review the following configuration:"
 MSG_CONFIRMATION="Do you want to proceed to the installation? (Y/n): "
@@ -48,7 +48,7 @@ readarray -t disks <<< "$(lsblk -l | awk '/disk/ {print "/dev/"$1""}')"
 filesystems=("ext4")
 readarray -t timezones <<< "$(timedatectl list-timezones)"
 drivers=("None" "NVIDIA" "NVIDIA Optimus" "AMD" "Intel")
-desktops=("Gnome" "dwm")
+desktops=("Gnome" "dwm (laptop)" "dwm (desktop)")
 
 # String colors
 RED='\033[0;31m'

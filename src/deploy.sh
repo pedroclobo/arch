@@ -1,27 +1,18 @@
 #!/bin/bash
 # Script to deploy the installer
 
-# Repository link and files
-MAIN_REPO_LINK="https://raw.githubusercontent.com/pedroclobo/arch/main/src/"
-main_files=("install.sh")
-
-LIB_REPO_LINK="https://raw.githubusercontent.com/pedroclobo/arch/main/src/lib/"
-lib_files=("disk.sh" "package.sh" "stdin.sh" "system.sh")
-
-
-# Dependency packages
+# Install dependencies
 pacman -Syy wget --noconfirm >/dev/null 2>&1
 
 # Download the files and make them executable
-for file in "${main_files[@]}"
-do
-	wget -q "${MAIN_REPO_LINK}""$file"
-	chmod +x "$file"
-done
+file_deps=("https://raw.githubusercontent.com/pedroclobo/arch/main/src/install.sh" \
+           "https://raw.githubusercontent.com/pedroclobo/arch/main/src/lib/disk.sh" \
+           "https://raw.githubusercontent.com/pedroclobo/arch/main/src/lib/package.sh" \
+           "https://raw.githubusercontent.com/pedroclobo/arch/main/src/lib/stdin.sh" \
+		   "https://raw.githubusercontent.com/pedroclobo/arch/main/src/lib/system.sh")
 
-for file in "${lib_files[@]}"
-do
-	wget -q "${LIB_REPO_LINK}""$file"
+for file in "${file_deps[@]}"; do
+	wget -q "$file"
 	chmod +x "$file"
 done
 

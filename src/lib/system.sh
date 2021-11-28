@@ -504,7 +504,7 @@ install_dwm() {
 
 	# Stow all dotfiles
 	pushd repos/dotfiles
-	ls -d */ | xargs stow -t /home/"$1"
+	ls -d */ | sudo -u "$1" xargs stow -t /home/"$1"
 
 	# Compile suckless programs
 	for program in $(ls suckless/.config); do

@@ -16,6 +16,7 @@ fzf
 htop
 light
 man
+man-pages
 mpv
 nautilus
 neofetch

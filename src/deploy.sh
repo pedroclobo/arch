@@ -13,7 +13,7 @@ file_deps=("https://raw.githubusercontent.com/pedroclobo/arch/main/src/install.s
 
 for file in "${file_deps[@]}"; do
 	wget -q "$file"
-	chmod +x "$file"
+	chmod +x "${file##*/}"
 done
 
 # Start the installer
